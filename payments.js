@@ -1,6 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
-const Donation = require('../models/Donation');
+const Donation = require('./Donation');
 
 const router = express.Router();
 const { CLICK_SERVICE_ID, CLICK_SECRET_KEY, PAYME_KEY } = process.env;
