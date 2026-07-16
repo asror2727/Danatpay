@@ -1,8 +1,8 @@
 const { Telegraf, Markup } = require('telegraf');
 const { v4: uuidv4 } = require('uuid');
-const Channel = require('./models/Channel');
-const Post = require('./models/Post');
-const Donation = require('./models/Donation');
+const Channel = require('./Channel');
+const Post = require('./Post');
+const Donation = require('./Donation');
 
 const { BOT_TOKEN, MINI_APP_URL } = process.env;
 const bot = new Telegraf(BOT_TOKEN);
