@@ -1,7 +1,7 @@
 const express = require('express');
-const Donation = require('../models/Donation');
-const Post = require('../models/Post');
-const Channel = require('../models/Channel');
+const Donation = require('./Donation');
+const Post = require('./Post');
+const Channel = require('./Channel');
 
 const router = express.Router();
 const { CLICK_MERCHANT_ID, CLICK_SERVICE_ID, PAYME_MERCHANT_ID } = process.env;
