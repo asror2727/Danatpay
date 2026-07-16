@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Izohlar</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, system-ui, sans-serif;
+    background: var(--tg-theme-bg-color, #f5f5f5);
+    color: var(--tg-theme-text-color, #111);
+    margin: 0;
+    padding: 16px;
+  }
+  .card {
+    background: var(--tg-theme-secondary-bg-color, #fff);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .top { font-size: 16px; margin-bottom: 8px; }
+  .top .name { font-weight: 700; }
+  .top .amount { color: #34a853; font-weight: 700; }
+  .comment { opacity: 0.65; font-size: 14px; margin-bottom: 10px; min-height: 14px; }
+  .date { text-align: right; font-size: 12px; opacity: 0.4; }
+
+  .empty { text-align: center; opacity: 0.5; margin-top: 60px; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div id="list"><div class="empty">Yuklanmoqda...</div></div>
+
+<script>
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+
+const params = new URLSearchParams(window.location.search);
+const postId = params.get('post');
+const channelIdParam = params.get('ch');
+
+function fmtDate(iso) {
+  const d = new Date(iso);
+  const months = ['yanvar','fevral','mart','aprel','may','iyun','iyul','avgust','sentabr','oktabr','noyabr','dekabr'];
+  return `${d.getDate()}-${months[d.getMonth()]} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+async function load() {
+  const list = document.getElementById('list');
+  let channelId = channelIdParam;
+
+  try {
+    if (postId && !channelId) {
+      const p = await fetch('/api/post/' + postId).then(r => r.json());
+      channelId = p.channelId;
+    }
+    if (!channelId) {
+      list.innerHTML = '<div class="empty">Kanal aniqlanmadi</div>';
+      return;
+    }
+
+    const url = '/api/comments/' + channelId + (postId ? '?post=' + postId : '');
+    const data = await fetch(url).then(r => r.json());
+
+    if (!data.visible) {
+      list.innerHTML = '<div class="empty">Izohlar bu post uchun yashirilgan</div>';
+      return;
+    }
+    if (!data.comments.length) {
+      list.innerHTML = '<div class="empty">Hozircha izohlar yo\'q</div>';
+      return;
+    }
+
+    list.innerHTML = data.comments.map(c => `
+      <div class="card">
+        <div class="top"><span class="name">${escapeHtml(c.name)}</span> = <span class="amount">${c.amount.toLocaleString()} so'm</span></div>
+        <div class="comment">${c.comment ? escapeHtml(c.comment) : ''}</div>
+        <div class="date">${fmtDate(c.date)}</div>
+      </div>
+    `).join('');
+  } catch (e) {
+    list.innerHTML = '<div class="empty">Xatolik yuz berdi</div>';
+  }
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+
+load();
+</script>
+
+</body>
+</html>

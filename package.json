@@ -1,0 +1,16 @@
+{
+  "name": "donate-bot-v2",
+  "version": "2.0.0",
+  "description": "Telegram donate bot with channel linking, posts, comments and Click/Payme",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "telegraf": "^4.16.3",
+    "dotenv": "^16.4.5",
+    "mongoose": "^8.5.0",
+    "uuid": "^9.0.1"
+  }
+}

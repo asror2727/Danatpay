@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Donat qilish</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, system-ui, sans-serif;
+    background: var(--tg-theme-bg-color, #fff);
+    color: var(--tg-theme-text-color, #111);
+    margin: 0;
+    padding: 16px;
+  }
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid #e5e5e5;
+    border-radius: 14px;
+    margin-bottom: 18px;
+  }
+  .header .icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: #2481cc; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 700; flex-shrink: 0;
+  }
+  .header .info { font-weight: 700; font-size: 15px; }
+  .header .sub { font-size: 12px; opacity: 0.6; margin-top: 2px; }
+
+  .title { font-size: 18px; font-weight: 700; text-align: center; margin-bottom: 16px; }
+
+  .row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  input[type=text], textarea, input[type=number] {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid #e5e5e5;
+    font-size: 15px;
+    background: transparent;
+    color: inherit;
+    font-family: inherit;
+  }
+  textarea { resize: none; min-height: 90px; }
+  .counter { text-align: right; font-size: 12px; opacity: 0.5; margin: -6px 0 12px; }
+
+  .toggle {
+    width: 44px; height: 26px; border-radius: 20px;
+    background: #ccc; position: relative; cursor: pointer; flex-shrink: 0;
+    transition: background 0.2s;
+  }
+  .toggle.on { background: var(--tg-theme-button-color, #2481cc); }
+  .toggle::after {
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 20px; height: 20px; border-radius: 50%; background: #fff;
+    transition: transform 0.2s;
+  }
+  .toggle.on::after { transform: translateX(18px); }
+  .toggle-label { font-size: 13px; opacity: 0.7; }
+
+  .methods { display: flex; gap: 10px; margin: 14px 0; }
+  .method-btn {
+    flex: 1; padding: 12px; border-radius: 12px; border: 2px solid #e5e5e5;
+    background: transparent; color: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .method-btn.active {
+    border-color: var(--tg-theme-button-color, #2481cc);
+    background: var(--tg-theme-button-color, #2481cc);
+    color: var(--tg-theme-button-text-color, #fff);
+  }
+
+  .terms { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; margin: 14px 0; }
+  .terms a { color: #2481cc; }
+
+  #payBtn {
+    width: 100%; padding: 16px; border: none; border-radius: 12px;
+    background: #34a853; color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;
+  }
+  #payBtn:disabled { opacity: 0.5; }
+
+  #msg { text-align: center; color: red; font-size: 13px; margin-top: 10px; min-height: 18px; }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="icon" id="channelIcon">D</div>
+    <div>
+      <div class="info" id="channelTitle">Yuklanmoqda...</div>
+      <div class="sub" id="postTitle"></div>
+    </div>
+  </div>
+
+  <div class="row">
+    <input type="text" id="nameInput" placeholder="Ismingizni kiriting">
+    <div class="toggle" id="anonToggle"></div>
+  </div>
+  <div class="toggle-label" style="margin: -8px 0 14px 2px;">Anonim (ism yashirin)</div>
+
+  <textarea id="commentInput" maxlength="250" placeholder="Izohingizni kiriting..."></textarea>
+  <div class="counter"><span id="charCount">0</span>/250</div>
+
+  <input type="number" id="amountInput" placeholder="To'lov miqdori (min 5 000 so'm)">
+
+  <div class="methods">
+    <button class="method-btn" data-method="click">Click</button>
+    <button class="method-btn" data-method="payme">Payme</button>
+  </div>
+
+  <div class="terms">
+    <input type="checkbox" id="termsCheck" style="margin-top:2px;">
+    <label for="termsCheck"><a href="/terms.html" target="_blank">Xizmat shartlari va qoidalari</a>ga rozi bo'ldim</label>
+  </div>
+
+  <button id="payBtn" disabled>Donat qilish</button>
+  <div id="msg"></div>
+
+<script>
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+
+const params = new URLSearchParams(window.location.search);
+const postId = params.get('post');
+const channelIdParam = params.get('ch');
+
+let channelId = channelIdParam || null;
+let selectedMethod = null;
+let anonymous = false;
+
+async function loadContext() {
+  try {
+    if (postId) {
+      const res = await fetch('/api/post/' + postId);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      channelId = data.channelId;
+      document.getElementById('channelTitle').textContent = data.channelTitle || 'Kanal';
+      document.getElementById('postTitle').textContent = data.title || '';
+      document.getElementById('channelIcon').textContent = (data.channelTitle || 'D')[0].toUpperCase();
+    } else if (channelId) {
+      const res = await fetch('/api/channel/' + channelId);
+      const data = await res.json();
+      document.getElementById('channelTitle').textContent = data.title || 'Kanal';
+      document.getElementById('channelIcon').textContent = (data.title || 'D')[0].toUpperCase();
+    } else {
+      document.getElementById('channelTitle').textContent = 'Kanal aniqlanmadi';
+    }
+  } catch (e) {
+    document.getElementById('channelTitle').textContent = 'Xatolik: kanal topilmadi';
+  }
+}
+loadContext();
+
+document.getElementById('anonToggle').addEventListener('click', (e) => {
+  anonymous = !anonymous;
+  e.target.classList.toggle('on', anonymous);
+  document.getElementById('nameInput').disabled = anonymous;
+  document.getElementById('nameInput').style.opacity = anonymous ? 0.4 : 1;
+});
+
+document.getElementById('commentInput').addEventListener('input', (e) => {
+  document.getElementById('charCount').textContent = e.target.value.length;
+});
+
+document.querySelectorAll('.method-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedMethod = btn.dataset.method;
+    updateButton();
+  });
+});
+
+['amountInput', 'termsCheck'].forEach(id => {
+  document.getElementById(id).addEventListener('input', updateButton);
+  document.getElementById(id).addEventListener('change', updateButton);
+});
+
+function updateButton() {
+  const amount = Number(document.getElementById('amountInput').value);
+  const terms = document.getElementById('termsCheck').checked;
+  const msg = document.getElementById('msg');
+  msg.textContent = '';
+
+  const valid = amount >= 5000 && selectedMethod && terms && channelId;
+  document.getElementById('payBtn').disabled = !valid;
+
+  if (amount > 0 && amount < 5000) msg.textContent = "Minimal summa 5 000 so'm";
+}
+
+document.getElementById('payBtn').addEventListener('click', async () => {
+  const msg = document.getElementById('msg');
+  msg.style.color = 'red';
+  msg.textContent = '';
+
+  const user = tg.initDataUnsafe?.user;
+
+  try {
+    const res = await fetch('/api/donate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        postId,
+        name: document.getElementById('nameInput').value,
+        anonymous,
+        comment: document.getElementById('commentInput').value,
+        amount: Number(document.getElementById('amountInput').value),
+        method: selectedMethod,
+        telegramUserId: user?.id
+      })
+    });
+    const data = await res.json();
+
+    if (data.error) { msg.textContent = data.error; return; }
+    tg.openLink(data.payUrl);
+  } catch (err) {
+    msg.textContent = "Xatolik yuz berdi, qayta urinib ko'ring.";
+  }
+});
+</script>
+
+</body>
+</html>
