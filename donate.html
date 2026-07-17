@@ -24,10 +24,14 @@
     margin-bottom: 18px;
   }
   .header .icon {
-    width: 48px; height: 48px; border-radius: 12px;
+    width: 48px; height: 48px; border-radius: 50%;
     background: #2481cc; color: #fff;
     display: flex; align-items: center; justify-content: center;
     font-size: 22px; font-weight: 700; flex-shrink: 0;
+    overflow: hidden;
+  }
+  .header .icon img {
+    width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
   }
   .header .info { font-weight: 700; font-size: 15px; }
   .header .sub { font-size: 12px; opacity: 0.6; margin-top: 2px; }
@@ -132,6 +136,16 @@ let channelId = channelIdParam || null;
 let selectedMethod = null;
 let anonymous = false;
 
+function setChannelIcon(channelId, title) {
+  const icon = document.getElementById('channelIcon');
+  icon.textContent = (title || 'D')[0].toUpperCase();
+  if (!channelId) return;
+  const img = new Image();
+  img.onload = () => { icon.innerHTML = ''; icon.appendChild(img); };
+  img.onerror = () => {};
+  img.src = '/api/channel-photo/' + channelId;
+}
+
 async function loadContext() {
   try {
     if (postId) {
@@ -141,12 +155,12 @@ async function loadContext() {
       channelId = data.channelId;
       document.getElementById('channelTitle').textContent = data.channelTitle || 'Kanal';
       document.getElementById('postTitle').textContent = data.title || '';
-      document.getElementById('channelIcon').textContent = (data.channelTitle || 'D')[0].toUpperCase();
+      setChannelIcon(channelId, data.channelTitle);
     } else if (channelId) {
       const res = await fetch('/api/channel/' + channelId);
       const data = await res.json();
       document.getElementById('channelTitle').textContent = data.title || 'Kanal';
-      document.getElementById('channelIcon').textContent = (data.title || 'D')[0].toUpperCase();
+      setChannelIcon(channelId, data.title);
     } else {
       document.getElementById('channelTitle').textContent = 'Kanal aniqlanmadi';
     }
