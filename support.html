@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tizimni qo'llab-quvvatlang</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, system-ui, sans-serif;
+    background: var(--tg-theme-bg-color, #fff);
+    color: var(--tg-theme-text-color, #111);
+    margin: 0;
+    padding: 20px;
+  }
+  .banner {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  .banner h1 { font-size: 19px; margin-bottom: 10px; }
+  .banner p { font-size: 14px; opacity: 0.75; line-height: 1.5; margin-bottom: 14px; }
+  .cta { font-weight: 700; font-size: 15px; margin-bottom: 18px; }
+
+  .counter {
+    text-align: center;
+    background: linear-gradient(135deg, #2481cc, #34a853);
+    color: #fff;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+  .counter .amount { font-size: 28px; font-weight: 800; }
+  .counter .label { font-size: 12px; opacity: 0.85; margin-top: 4px; }
+
+  input[type=number] {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid #e5e5e5;
+    font-size: 15px;
+    margin-bottom: 14px;
+    background: transparent;
+    color: inherit;
+  }
+
+  .methods { display: flex; gap: 10px; margin-bottom: 18px; }
+  .method-btn {
+    flex: 1; padding: 12px; border-radius: 12px; border: 2px solid #e5e5e5;
+    background: transparent; color: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .method-btn.active {
+    border-color: var(--tg-theme-button-color, #2481cc);
+    background: var(--tg-theme-button-color, #2481cc);
+    color: var(--tg-theme-button-text-color, #fff);
+  }
+
+  #payBtn {
+    width: 100%; padding: 16px; border: none; border-radius: 12px;
+    background: #34a853; color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;
+  }
+  #payBtn:disabled { opacity: 0.5; }
+  #msg { text-align: center; color: red; font-size: 13px; margin-top: 10px; min-height: 18px; }
+</style>
+</head>
+<body>
+
+  <div class="banner">
+    <h1>Bizning Tizimni Qo'llab-quvvatlang!</h1>
+    <p>
+      Sizni danatlar.uz tizimini qo'llab-quvvatlashga taklif etamiz! Har bir donat,
+      platformamizni rivojlantirishga va yanada ko'proq Telegram kanal administratorlariga
+      yordam berishga xizmat qiladi.
+    </p>
+    <p>Kichik bir hissa qo'shishingiz bilan katta o'zgarishlarga erishamiz. Birgalikda muvaffaqiyatga erishamiz!</p>
+    <div class="cta">Donat qiling va qo'llab-quvvatlang!</div>
+  </div>
+
+  <div class="counter">
+    <div class="amount" id="totalAmount">...</div>
+    <div class="label">jami yig'ilgan mablag'</div>
+  </div>
+
+  <input type="number" id="amountInput" placeholder="Summani kiriting (min 5 000 so'm)">
+
+  <div class="methods">
+    <button class="method-btn" data-method="click">Click</button>
+    <button class="method-btn" data-method="payme">Payme</button>
+  </div>
+
+  <button id="payBtn" disabled>Donat qilish</button>
+  <div id="msg"></div>
+
+<script>
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+
+let selectedMethod = null;
+
+async function loadTotal() {
+  try {
+    const res = await fetch('/api/platform-total');
+    const data = await res.json();
+    document.getElementById('totalAmount').textContent = data.total.toLocaleString() + " so'm";
+  } catch (e) {}
+}
+loadTotal();
+setInterval(loadTotal, 10000);
+
+document.querySelectorAll('.method-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedMethod = btn.dataset.method;
+    updateButton();
+  });
+});
+
+document.getElementById('amountInput').addEventListener('input', updateButton);
+
+function updateButton() {
+  const amount = Number(document.getElementById('amountInput').value);
+  const msg = document.getElementById('msg');
+  msg.textContent = '';
+  document.getElementById('payBtn').disabled = !(amount >= 5000 && selectedMethod);
+  if (amount > 0 && amount < 5000) msg.textContent = "Minimal summa 5 000 so'm";
+}
+
+document.getElementById('payBtn').addEventListener('click', async () => {
+  const msg = document.getElementById('msg');
+  msg.style.color = 'red';
+  msg.textContent = '';
+  const user = tg.initDataUnsafe?.user;
+
+  try {
+    const res = await fetch('/api/donate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        channelId: 'platform-support',
+        name: user?.first_name || '',
+        anonymous: false,
+        comment: '',
+        amount: Number(document.getElementById('amountInput').value),
+        method: selectedMethod,
+        telegramUserId: user?.id
+      })
+    });
+    const data = await res.json();
+    if (data.error) { msg.textContent = data.error; return; }
+    tg.openLink(data.payUrl);
+  } catch (e) {
+    msg.textContent = "Xatolik yuz berdi, qayta urinib ko'ring.";
+  }
+});
+</script>
+
+</body>
+</html>
