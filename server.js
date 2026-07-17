@@ -2,18 +2,25 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const path = require('path');
-const bot = require('./bot');
 const apiRoutes = require('./api');
 const paymentRoutes = require('./payments');
 
-const { PORT = 3000, MONGODB_URI, MINI_APP_URL } = process.env;
+const { PORT = 3000, MONGODB_URI } = process.env;
 
 const app = express();
 app.use(express.json());
 app.use(express.static(__dirname));
 app.use('/api', apiRoutes);
 app.use('/', paymentRoutes);
-app.use(bot.webhookCallback('/bot'));
+
+// Chiroyli URL: https://domen.com/kanalnomi -> donate.html?ch=...
+app.get('/:slug', async (req, res, next) => {
+  const Channel = require('./Channel');
+  const channel = await Channel.findOne({ slug: req.params.slug });
+  if (!channel) return next();
+  const post = req.query.post ? `&post=${req.query.post}` : '';
+  res.redirect(`/donate.html?ch=${channel.channelId}${post}`);
+});
 
 async function start() {
   if (!MONGODB_URI) {
@@ -24,19 +31,9 @@ async function start() {
   await mongoose.connect(MONGODB_URI);
   console.log('MongoDB ulandi ✅');
 
-  app.listen(PORT, async () => {
+  app.listen(PORT, () => {
     console.log(`Server ${PORT} portda ishga tushdi`);
-
-    if (MINI_APP_URL) {
-      try {
-        await bot.telegram.setWebhook(`${MINI_APP_URL}/bot`);
-        console.log("Webhook o'rnatildi:", `${MINI_APP_URL}/bot`);
-      } catch (e) {
-        console.error('Webhook xato:', e.message);
-      }
-    } else {
-      console.log("Diqqat: MINI_APP_URL sozlanmagan, webhook o'rnatilmadi.");
-    }
+    console.log("Bu server endi faqat API + mini app xizmat qiladi. Telegram webhook bots.business tomonidan boshqariladi.");
   });
 }
 
