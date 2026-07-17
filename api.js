@@ -212,4 +212,39 @@ router.get('/comments/:channelId', async (req, res) => {
   });
 });
 
+// Kanal rasmi (dumaloq avatar uchun) - bot tokenini yashirib, rasmni o'zimiz orqali beramiz
+router.get('/channel-photo/:channelId', async (req, res) => {
+  try {
+    let channel = await Channel.findOne({ channelId: req.params.channelId });
+    if (!channel) channel = await Channel.findOne({ slug: req.params.channelId });
+    const channelId = channel ? channel.channelId : req.params.channelId;
+
+    const fileId = await telegram.getChatPhotoFileId(channelId);
+    if (!fileId) return res.status(404).end();
+
+    const filePath = await telegram.getFilePath(fileId);
+    const fileUrl = `https://api.telegram.org/file/bot${telegram.BOT_TOKEN}/${filePath}`;
+
+    const imgRes = await fetch(fileUrl);
+    if (!imgRes.ok) return res.status(404).end();
+
+    res.set('Content-Type', 'image/jpeg');
+    res.set('Cache-Control', 'public, max-age=3600');
+    const buffer = Buffer.from(await imgRes.arrayBuffer());
+    res.send(buffer);
+  } catch (e) {
+    res.status(404).end();
+  }
+});
+
+// Platformani (butun tizimni) qo'llab-quvvatlash uchun umumiy yig'ilgan summa
+const PLATFORM_CHANNEL_ID = 'platform-support';
+router.get('/platform-total', async (req, res) => {
+  const agg = await Donation.aggregate([
+    { $match: { channelId: PLATFORM_CHANNEL_ID, status: 'paid' } },
+    { $group: { _id: null, total: { $sum: '$amount' } } }
+  ]);
+  res.json({ total: agg[0]?.total || 0 });
+});
+
 module.exports = router;
