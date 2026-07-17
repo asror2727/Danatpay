@@ -50,4 +50,14 @@ async function sendDocument(chatId, document, extra = {}) {
   return call('sendDocument', { chat_id: chatId, document, ...extra });
 }
 
-module.exports = { getChat, isBotAdmin, sendMessage, sendPhoto, sendVideo, sendDocument, getBotId };
+async function getChatPhotoFileId(channelId) {
+  const chat = await call('getChat', { chat_id: channelId });
+  return chat.photo ? chat.photo.big_file_id : null;
+}
+
+async function getFilePath(fileId) {
+  const file = await call('getFile', { file_id: fileId });
+  return file.file_path;
+}
+
+module.exports = { getChat, isBotAdmin, sendMessage, sendPhoto, sendVideo, sendDocument, getBotId, getChatPhotoFileId, getFilePath, BOT_TOKEN };
