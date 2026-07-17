@@ -478,6 +478,27 @@ async function notifyAdmin(text) {
   try { await bot.telegram.sendMessage(ADMIN_CHAT_ID, text); } catch (e) {}
 }
 
+bot.command('qollab', async (ctx) => {
+  const agg = await Donation.aggregate([
+    { $match: { channelId: 'platform-support', status: 'paid' } },
+    { $group: { _id: null, total: { $sum: '$amount' } } }
+  ]);
+  const total = agg[0]?.total || 0;
+
+  ctx.reply(
+    "Bizning Tizimni Qo'llab-quvvatlang!\n\n" +
+    "Sizni danatlar.uz tizimini qo'llab-quvvatlashga taklif etamiz! Har bir donat, " +
+    "platformamizni rivojlantirishga va yanada ko'proq Telegram kanal administratorlariga " +
+    "yordam berishga xizmat qiladi.\n\n" +
+    "Kichik bir hissa qo'shishingiz bilan katta o'zgarishlarga erishamiz. Birgalikda muvaffaqiyatga erishamiz!\n\n" +
+    "Donat qiling va qo'llab-quvvatlang!\n\n" +
+    `💰 ${total.toLocaleString()} so'm`,
+    Markup.inlineKeyboard([
+      Markup.button.webApp('💝 Donat qilish', `${MINI_APP_URL}/support.html`)
+    ])
+  );
+});
+
 // ============ XIZMAT SHARTLARI ============
 bot.hears("📄 Xizmat shartlari", (ctx) => {
   ctx.reply('Xizmat shartlari va qoidalari: ' + (MINI_APP_URL || '') + '/terms.html');
