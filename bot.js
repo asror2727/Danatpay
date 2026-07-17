@@ -31,6 +31,8 @@ const mainMenu = Markup.keyboard([
   ['🆘 Support']
 ]).resize();
 
+const cancelKeyboard = Markup.keyboard([['🔙 Orqaga']]).resize();
+
 // ============ FORWARD ORQALI KANAL ANIQLASH (global middleware) ============
 bot.use(async (ctx, next) => {
   const state = ctx.from ? userState[ctx.from.id] : null;
@@ -92,10 +94,14 @@ bot.hears('📢 Kanalim', async (ctx) => {
   if (existing) return showChannelMenu(ctx, existing);
 
   userState[ctx.from.id] = { step: 'awaiting_channel' };
-  ctx.reply("Kanalingizdagi ixtiyoriy postni forward qiling, yoki kanal usernameni @kanal ko'rinishida yuboring.");
+  ctx.reply("Kanalingizdagi ixtiyoriy postni forward qiling, yoki kanal usernameni @kanal ko'rinishida yuboring.", cancelKeyboard);
 });
 
 async function showChannelMenu(ctx, channel) {
+  if (!channel.slug) {
+    channel.slug = await makeUniqueSlug(channel.username || channel.title);
+    await channel.save();
+  }
   const link = `${MINI_APP_URL}/${channel.slug}`;
   ctx.reply(
     `Kanalingiz ulandi ✅\nDonat havolasi:\n${link}`,
@@ -187,7 +193,7 @@ bot.action(/post_new_(.+)/, (ctx) => {
   const channelId = ctx.match[1];
   userState[ctx.from.id] = { step: 'awaiting_post_content', data: { channelId } };
   ctx.answerCbQuery();
-  ctx.reply("Kanalingizga tashlash kerak bo'lgan postni yuboring (matn, rasm, video yoki fayl).");
+  ctx.reply("Kanalingizga tashlash kerak bo'lgan postni yuboring (matn, rasm, video yoki fayl).", cancelKeyboard);
 });
 
 bot.on(['photo', 'video', 'document'], async (ctx, next) => {
@@ -207,6 +213,11 @@ bot.on(['photo', 'video', 'document'], async (ctx, next) => {
 bot.on('text', async (ctx, next) => {
   const state = userState[ctx.from.id];
   if (!state) return next();
+
+  if (ctx.message.text.trim() === '🔙 Orqaga' || ctx.message.text.trim() === '/cancel') {
+    userState[ctx.from.id] = { step: 'idle' };
+    return ctx.reply('Bosh menyu', mainMenu);
+  }
 
   if (state.step === 'awaiting_channel') {
     const text = ctx.message.text.trim();
@@ -451,7 +462,8 @@ bot.action('withdraw_start', async (ctx) => {
   const { balance } = await getBalance(String(ctx.from.id));
   userState[ctx.from.id] = { step: 'awaiting_withdraw_amount', data: { balance } };
   ctx.reply(
-    `Pullarni yechib olishingiz uchun qancha yechib olasiz, istalgan summani yozing.\n\nMinimal: 10 000 so'm\nHisobingizda: ${balance.toLocaleString()} so'm`
+    `Pullarni yechib olishingiz uchun qancha yechib olasiz, istalgan summani yozing.\n\nMinimal: 10 000 so'm\nHisobingizda: ${balance.toLocaleString()} so'm`,
+    cancelKeyboard
   );
 });
 
