@@ -1,40 +1,63 @@
-require('dotenv').config();
-const express = require('express');
-const mongoose = require('mongoose');
-const path = require('path');
-const apiRoutes = require('./api');
-const paymentRoutes = require('./payments');
-
-const { PORT = 3000, MONGODB_URI } = process.env;
+ const express = require("express");
+const axios = require("axios");
 
 const app = express();
 app.use(express.json());
-app.use(express.static(__dirname));
-app.use('/api', apiRoutes);
-app.use('/', paymentRoutes);
 
-// Chiroyli URL: https://domen.com/kanalnomi -> donate.html?ch=...
-app.get('/:slug', async (req, res, next) => {
-  const Channel = require('./Channel');
-  const channel = await Channel.findOne({ slug: req.params.slug });
-  if (!channel) return next();
-  const post = req.query.post ? `&post=${req.query.post}` : '';
-  res.redirect(`/donate.html?ch=${channel.channelId}${post}`);
-});
+const TOKEN = process.env.BOT_TOKEN;
 
-async function start() {
-  if (!MONGODB_URI) {
-    console.error("XATOLIK: MONGODB_URI yo'q! Render Environment Variables ga qo'shing.");
-    process.exit(1);
+app.post("/checkAdmin", async (req, res) => {
+
+  const { channel } = req.body;
+
+  try {
+
+    const me = await axios.get(
+      `https://api.telegram.org/bot${TOKEN}/getMe`
+    );
+
+    const botId = me.data.result.id;
+
+    const member = await axios.get(
+      `https://api.telegram.org/bot${TOKEN}/getChatMember`,
+      {
+        params: {
+          chat_id: "@" + channel,
+          user_id: botId
+        }
+      }
+    );
+
+    const status = member.data.result.status;
+
+    if (
+      status == "administrator" ||
+      status == "creator"
+    ) {
+
+      return res.json({
+        ok: true,
+        url: "https://danatpay.onrender.com/" + channel
+      });
+
+    } else {
+
+      return res.json({
+        ok: false,
+        error: "Bot admin emas"
+      });
+
+    }
+
+  } catch (e) {
+
+    return res.json({
+      ok: false,
+      error: e.response?.data || e.message
+    });
+
   }
 
-  await mongoose.connect(MONGODB_URI);
-  console.log('MongoDB ulandi ✅');
+});
 
-  app.listen(PORT, () => {
-    console.log(`Server ${PORT} portda ishga tushdi`);
-    console.log("Bu server endi faqat API + mini app xizmat qiladi. Telegram webhook bots.business tomonidan boshqariladi.");
-  });
-}
-
-start();
+app.listen(process.env.PORT || 3000);
