@@ -1,63 +1,51 @@
- const express = require("express");
-const axios = require("axios");
+require('dotenv').config();
+const express = require('express');
+const mongoose = require('mongoose');
+const path = require('path');
+const bot = require('./bot');
+const apiRoutes = require('./routes/api');
+const paymentRoutes = require('./routes/payments');
+
+const { PORT = 3000, MONGODB_URI, MINI_APP_URL } = process.env;
 
 const app = express();
 app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/api', apiRoutes);
+app.use('/', paymentRoutes);
+app.use(bot.webhookCallback('/bot'));
 
-const TOKEN = process.env.BOT_TOKEN;
-
-app.post("/checkAdmin", async (req, res) => {
-
-  const { channel } = req.body;
-
-  try {
-
-    const me = await axios.get(
-      `https://api.telegram.org/bot${TOKEN}/getMe`
-    );
-
-    const botId = me.data.result.id;
-
-    const member = await axios.get(
-      `https://api.telegram.org/bot${TOKEN}/getChatMember`,
-      {
-        params: {
-          chat_id: "@" + channel,
-          user_id: botId
-        }
-      }
-    );
-
-    const status = member.data.result.status;
-
-    if (
-      status == "administrator" ||
-      status == "creator"
-    ) {
-
-      return res.json({
-        ok: true,
-        url: "https://danatpay.onrender.com/" + channel
-      });
-
-    } else {
-
-      return res.json({
-        ok: false,
-        error: "Bot admin emas"
-      });
-
-    }
-
-  } catch (e) {
-
-    return res.json({
-      ok: false,
-      error: e.response?.data || e.message
-    });
-
-  }
-
+// Chiroyli URL: https://domen.com/kanalnomi -> donate.html?ch=...
+app.get('/:slug', async (req, res, next) => {
+  const Channel = require('./Channel');
+  const channel = await Channel.findOne({ slug: req.params.slug });
+  if (!channel) return next();
+  const post = req.query.post ? `&post=${req.query.post}` : '';
+  res.redirect(`/donate.html?ch=${channel.channelId}${post}`);
 });
 
-app.listen(process.env.PORT || 3000);
+async function start() {
+  if (!MONGODB_URI) {
+    console.error("XATOLIK: MONGODB_URI yo'q! Render Environment Variables ga qo'shing.");
+    process.exit(1);
+  }
+
+  await mongoose.connect(MONGODB_URI);
+  console.log('MongoDB ulandi ✅');
+
+  app.listen(PORT, async () => {
+    console.log(`Server ${PORT} portda ishga tushdi`);
+    if (MINI_APP_URL) {
+      try {
+        await bot.telegram.setWebhook(`${MINI_APP_URL}/bot`);
+        console.log("Webhook o'rnatildi:", `${MINI_APP_URL}/bot`);
+      } catch (e) {
+        console.error('Webhook xato:', e.message);
+      }
+    } else {
+      console.log("Diqqat: MINI_APP_URL sozlanmagan, webhook o'rnatilmadi.");
+    }
+  });
+}
+
+start();
