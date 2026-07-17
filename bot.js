@@ -3,8 +3,9 @@ const { v4: uuidv4 } = require('uuid');
 const Channel = require('./Channel');
 const Post = require('./Post');
 const Donation = require('./Donation');
+const Withdrawal = require('./Withdrawal');
 
-const { BOT_TOKEN, MINI_APP_URL } = process.env;
+const { BOT_TOKEN, MINI_APP_URL, ADMIN_CHAT_ID, SUPPORT_USERNAME } = process.env;
 const bot = new Telegraf(BOT_TOKEN);
 
 let BOT_USERNAME = '';
@@ -12,6 +13,17 @@ bot.telegram.getMe().then((me) => { BOT_USERNAME = me.username; }).catch(() => {
 
 // Oddiy xotiradagi holat (MVP uchun yetarli, server qayta ishga tushsa tozalanadi)
 const userState = {};
+
+function slugify(str) {
+  return (str || '').toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 20) || 'kanal';
+}
+
+async function makeUniqueSlug(base) {
+  let slug = slugify(base);
+  let n = 0;
+  while (await Channel.findOne({ slug: n === 0 ? slug : slug + n })) n++;
+  return n === 0 ? slug : slug + n;
+}
 
 const mainMenu = Markup.keyboard([
   ['📢 Kanalim', '👤 Hisobim'],
@@ -25,13 +37,15 @@ bot.use(async (ctx, next) => {
   const fwdChat = ctx.message?.forward_from_chat;
 
   if (state && state.step === 'awaiting_channel' && fwdChat && fwdChat.type === 'channel') {
+    const slug = await makeUniqueSlug(fwdChat.username || fwdChat.title);
     await Channel.findOneAndUpdate(
       { channelId: String(fwdChat.id) },
       {
         channelId: String(fwdChat.id),
         ownerId: String(ctx.from.id),
         title: fwdChat.title,
-        username: fwdChat.username ? '@' + fwdChat.username : ''
+        username: fwdChat.username ? '@' + fwdChat.username : '',
+        slug
       },
       { upsert: true }
     );
@@ -82,7 +96,7 @@ bot.hears('📢 Kanalim', async (ctx) => {
 });
 
 async function showChannelMenu(ctx, channel) {
-  const link = `${MINI_APP_URL}/donate.html?ch=${channel.channelId}`;
+  const link = `${MINI_APP_URL}/${channel.slug}`;
   ctx.reply(
     `Kanalingiz ulandi ✅\nDonat havolasi:\n${link}`,
     Markup.inlineKeyboard([
@@ -100,9 +114,54 @@ bot.action('back_main', (ctx) => {
 });
 
 bot.action(/channel_info_(.+)/, async (ctx) => {
-  const channel = await Channel.findOne({ channelId: ctx.match[1] });
+  const channelId = ctx.match[1];
   ctx.answerCbQuery();
-  ctx.reply(`Kanal: ${channel?.title || ctx.match[1]}\nHolati: ${channel?.verified ? 'Tasdiqlangan ✅' : 'Tasdiqlanmagan'}`);
+  const channel = await Channel.findOne({ channelId });
+  if (!channel) return ctx.reply('Kanal topilmadi.');
+
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfWeek = new Date(startOfDay); startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay());
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  async function sumSince(date) {
+    const agg = await Donation.aggregate([
+      { $match: { channelId, status: 'paid', createdAt: { $gte: date } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    return agg[0]?.total || 0;
+  }
+
+  const [daily, weekly, monthly, totalAgg, postCount] = await Promise.all([
+    sumSince(startOfDay),
+    sumSince(startOfWeek),
+    sumSince(startOfMonth),
+    Donation.aggregate([
+      { $match: { channelId, status: 'paid' } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]),
+    Post.countDocuments({ channelId })
+  ]);
+
+  let memberCount = "Noma'lum";
+  try {
+    memberCount = await ctx.telegram.getChatMembersCount(channelId);
+  } catch (e) {}
+
+  const total = totalAgg[0]?.total || 0;
+
+  ctx.reply(
+    `📊 Kanal statistika\n\n` +
+    `Kanal: ${channel.title || channelId}\n` +
+    `Owner ID: ${channel.ownerId}\n` +
+    `Kanal ID: ${channel.channelId}\n\n` +
+    `Kunlik tushum: ${daily.toLocaleString()} so'm\n` +
+    `Haftalik tushum: ${weekly.toLocaleString()} so'm\n` +
+    `Oylik tushum: ${monthly.toLocaleString()} so'm\n\n` +
+    `Kanalda postlar soni: ${postCount}\n` +
+    `Kanal jami olib kelgan: ${total.toLocaleString()} so'm\n` +
+    `Obunachilar soni: ${memberCount}`
+  );
 });
 
 // ============ ADMIN TASDIQLASH ============
@@ -156,9 +215,10 @@ bot.on('text', async (ctx, next) => {
     }
     try {
       const chat = await ctx.telegram.getChat(text);
+      const slug = await makeUniqueSlug(chat.username || chat.title);
       await Channel.findOneAndUpdate(
         { channelId: String(chat.id) },
-        { channelId: String(chat.id), ownerId: String(ctx.from.id), title: chat.title, username: text },
+        { channelId: String(chat.id), ownerId: String(ctx.from.id), title: chat.title, username: text, slug },
         { upsert: true }
       );
       userState[ctx.from.id] = { step: 'idle' };
@@ -191,6 +251,85 @@ bot.on('text', async (ctx, next) => {
         [Markup.button.callback('Bekor qilish', 'ptype_cancel')]
       ])
     );
+  }
+
+  if (state.step === 'awaiting_withdraw_amount') {
+    const amount = Number(ctx.message.text.replace(/\D/g, ''));
+    if (!amount || amount < 10000) {
+      return ctx.reply("Minimal summa 10 000 so'm. Qaytadan kiriting:");
+    }
+    if (amount > state.data.balance) {
+      return ctx.reply("Hisobingizda yetarli mablag' yo'q. Qaytadan kiriting:");
+    }
+    userState[ctx.from.id] = { step: 'awaiting_withdraw_card', data: { ...state.data, amount } };
+    return ctx.reply(
+      "Pul yechish miqdori qabul qilindi ✅\n\nMablag' qabul qilish uchun Uzcard yoki Humo karta raqamingizni yozing (16 ta raqam):"
+    );
+  }
+
+  if (state.step === 'awaiting_withdraw_card') {
+    const cardNumber = ctx.message.text.replace(/\D/g, '');
+    if (cardNumber.length !== 16) {
+      return ctx.reply("Karta raqami 16 ta raqamdan iborat bo'lishi kerak. Qaytadan yozing:");
+    }
+    const bank = detectBank(cardNumber);
+    if (!bank) {
+      return ctx.reply("Bu Uzcard yoki Humo kartasiga o'xshamayapti. Qaytadan tekshirib yozing:");
+    }
+    userState[ctx.from.id] = {
+      step: 'awaiting_withdraw_name',
+      data: { ...state.data, cardNumber, bank }
+    };
+    return ctx.reply("Karta egasining F.I.Sh ni karta ustidagi kabi yozing (masalan: ASROR X):");
+  }
+
+  if (state.step === 'awaiting_withdraw_name') {
+    const cardHolder = ctx.message.text.trim();
+    const code = String(Math.floor(10000 + Math.random() * 90000));
+    userState[ctx.from.id] = {
+      step: 'awaiting_withdraw_otp',
+      data: { ...state.data, cardHolder, code }
+    };
+
+    const masked = state.data.cardNumber.slice(0, 4) + ' **** **** ' + state.data.cardNumber.slice(-4);
+    await ctx.reply(
+      `Karta ma'lumotlaringiz aniqlandi ✅\n\n` +
+      `Karta egasi: ${cardHolder}\n` +
+      `Karta raqami: ${masked}\n` +
+      `Bank: ${state.data.bank}\n\n` +
+      `Tasdiqlash kodi yuborildi. Kodni shu yerga yuboring:`
+    );
+    // Eslatma: haqiqiy telefon SMS yubormaymiz (buning uchun eskiz.uz kabi
+    // pullik SMS xizmati kerak). Kod hozircha shu botning o'zi orqali yuboriladi.
+    return ctx.reply(`Tasdiqlash kodingiz: ${code}`);
+  }
+
+  if (state.step === 'awaiting_withdraw_otp') {
+    if (ctx.message.text.trim() !== state.data.code) {
+      return ctx.reply("Kod noto'g'ri. Qaytadan kiriting:");
+    }
+    const withdrawalId = 'wd' + Date.now();
+    await Withdrawal.create({
+      withdrawalId,
+      ownerId: String(ctx.from.id),
+      amount: state.data.amount,
+      cardNumber: state.data.cardNumber,
+      cardHolder: state.data.cardHolder,
+      bank: state.data.bank,
+      status: 'pending'
+    });
+    userState[ctx.from.id] = { step: 'idle' };
+    ctx.reply("So'rovingiz qabul qilindi ✅\n30-50 daqiqa ichida mablag' kartangizga tashlab beriladi.", mainMenu);
+
+    notifyAdmin(
+      `💸 Yangi pul yechish so'rovi\n\n` +
+      `Foydalanuvchi: ${ctx.from.id} (${ctx.from.username ? '@' + ctx.from.username : ctx.from.first_name})\n` +
+      `Summa: ${state.data.amount.toLocaleString()} so'm\n` +
+      `Karta: ${state.data.cardNumber} (${state.data.bank})\n` +
+      `Karta egasi: ${state.data.cardHolder}\n` +
+      `So'rov ID: ${withdrawalId}`
+    );
+    return;
   }
 
   return next();
@@ -271,15 +410,61 @@ async function publishPost(ctx, data, visibility) {
 }
 
 // ============ HISOBIM ============
-bot.hears('👤 Hisobim', async (ctx) => {
-  const channels = await Channel.find({ ownerId: String(ctx.from.id) });
-  const agg = await Donation.aggregate([
-    { $match: { channelId: { $in: channels.map(c => c.channelId) }, status: 'paid' } },
+async function getBalance(ownerId) {
+  const channels = await Channel.find({ ownerId });
+  const channelIds = channels.map(c => c.channelId);
+
+  const incomeAgg = await Donation.aggregate([
+    { $match: { channelId: { $in: channelIds }, status: 'paid' } },
     { $group: { _id: null, total: { $sum: '$amount' } } }
   ]);
-  const total = agg[0]?.total || 0;
-  ctx.reply(`👤 Hisobingiz:\nKanallar soni: ${channels.length}\nJami tushum: ${total} so'm`);
+  const expenseAgg = await Withdrawal.aggregate([
+    { $match: { ownerId, status: { $in: ['pending', 'completed'] } } },
+    { $group: { _id: null, total: { $sum: '$amount' } } }
+  ]);
+
+  const income = incomeAgg[0]?.total || 0;
+  const expense = expenseAgg[0]?.total || 0;
+  return { income, expense, balance: income - expense };
+}
+
+bot.hears('👤 Hisobim', async (ctx) => {
+  const { income, expense, balance } = await getBalance(String(ctx.from.id));
+  ctx.reply(
+    `👤 Hisobingiz: ${balance.toLocaleString()} so'm\n\n` +
+    `Kirim: ${income.toLocaleString()} so'm\n` +
+    `Chiqim: ${expense.toLocaleString()} so'm`,
+    Markup.inlineKeyboard([
+      [Markup.button.callback("💳 Pul yechib olish", 'withdraw_start')],
+      [Markup.button.callback("⚡ Tez yechib olish", 'withdraw_fast')]
+    ])
+  );
 });
+
+bot.action('withdraw_fast', (ctx) => {
+  ctx.answerCbQuery();
+  ctx.reply(`Tezkor pul yechish uchun adminga murojaat qiling:\n@${SUPPORT_USERNAME || 'x7fan'}`);
+});
+
+bot.action('withdraw_start', async (ctx) => {
+  ctx.answerCbQuery();
+  const { balance } = await getBalance(String(ctx.from.id));
+  userState[ctx.from.id] = { step: 'awaiting_withdraw_amount', data: { balance } };
+  ctx.reply(
+    `Pullarni yechib olishingiz uchun qancha yechib olasiz, istalgan summani yozing.\n\nMinimal: 10 000 so'm\nHisobingizda: ${balance.toLocaleString()} so'm`
+  );
+});
+
+function detectBank(cardNumber) {
+  if (cardNumber.startsWith('8600')) return 'Uzcard';
+  if (cardNumber.startsWith('9860')) return 'Humo';
+  return null;
+}
+
+async function notifyAdmin(text) {
+  if (!ADMIN_CHAT_ID) return;
+  try { await bot.telegram.sendMessage(ADMIN_CHAT_ID, text); } catch (e) {}
+}
 
 // ============ XIZMAT SHARTLARI ============
 bot.hears("📄 Xizmat shartlari", (ctx) => {
@@ -298,7 +483,7 @@ bot.hears("💰 To'lovlar", async (ctx) => {
 
 // ============ SUPPORT ============
 bot.hears('🆘 Support', (ctx) => {
-  ctx.reply('Savollaringiz bo\'lsa: @your_support_username');
+  ctx.reply(`Savollaringiz bo'lsa: @${SUPPORT_USERNAME || 'x7fan'}`);
 });
 
 module.exports = bot;
