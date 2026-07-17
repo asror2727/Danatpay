@@ -3,14 +3,14 @@ const express = require('express');
 const mongoose = require('mongoose');
 const path = require('path');
 const bot = require('./bot');
-const apiRoutes = require('./routes/api');
-const paymentRoutes = require('./routes/payments');
+const apiRoutes = require('./api');
+const paymentRoutes = require('./payments');
 
 const { PORT = 3000, MONGODB_URI, MINI_APP_URL } = process.env;
 
 const app = express();
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(__dirname));
 app.use('/api', apiRoutes);
 app.use('/', paymentRoutes);
 app.use(bot.webhookCallback('/bot'));
