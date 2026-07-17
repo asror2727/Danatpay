@@ -2,9 +2,131 @@ const express = require('express');
 const Donation = require('./Donation');
 const Post = require('./Post');
 const Channel = require('./Channel');
+const telegram = require('./telegram');
 
 const router = express.Router();
-const { CLICK_MERCHANT_ID, CLICK_SERVICE_ID, PAYME_MERCHANT_ID } = process.env;
+const { CLICK_MERCHANT_ID, CLICK_SERVICE_ID, PAYME_MERCHANT_ID, MINI_APP_URL } = process.env;
+
+function slugify(str) {
+  return (str || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '')
+    .slice(0, 20) || 'kanal';
+}
+
+async function makeUniqueSlug(base) {
+  let slug = slugify(base);
+  let n = 0;
+  while (await Channel.findOne({ slug: n === 0 ? slug : slug + n })) {
+    n++;
+  }
+  return n === 0 ? slug : slug + n;
+}
+
+// ============ BOTS.BUSINESS UCHUN: KANAL ULASH ============
+// Foydalanuvchi kanal @username yoki forward qilingan chat_id yuborganda chaqiriladi
+router.post('/channel/link', async (req, res) => {
+  const { ownerId, channelId, title, username } = req.body;
+  if (!ownerId || !channelId) return res.status(400).json({ error: 'ownerId va channelId kerak' });
+
+  let channel = await Channel.findOne({ channelId: String(channelId) });
+  if (!channel) {
+    const slug = await makeUniqueSlug(username || title);
+    channel = await Channel.create({
+      channelId: String(channelId), ownerId: String(ownerId), title, username, slug
+    });
+  }
+  res.json({ slug: channel.slug, verified: channel.verified });
+});
+
+// Foydalanuvchi botni kanalda admin qilib, "Tasdiqlash" bosganda chaqiriladi
+router.post('/channel/verify', async (req, res) => {
+  const { channelId } = req.body;
+  const channel = await Channel.findOne({ channelId: String(channelId) });
+  if (!channel) return res.status(404).json({ error: 'Kanal topilmadi' });
+
+  try {
+    const isAdmin = await telegram.isBotAdmin(channelId);
+    if (isAdmin) {
+      channel.verified = true;
+      await channel.save();
+    }
+    res.json({ verified: channel.verified, link: `${MINI_APP_URL}/${channel.slug}` });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Foydalanuvchining kanallari ro'yxati (Kanalim tugmasi uchun)
+router.get('/channel/owner/:ownerId', async (req, res) => {
+  const channels = await Channel.find({ ownerId: req.params.ownerId });
+  res.json(channels.map(c => ({
+    channelId: c.channelId, title: c.title, verified: c.verified,
+    slug: c.slug, link: c.verified ? `${MINI_APP_URL}/${c.slug}` : null
+  })));
+});
+
+// ============ BOTS.BUSINESS UCHUN: POST JOYLASH ============
+router.post('/post/create', async (req, res) => {
+  const { ownerId, channelId, contentType, fileId, text, title, paymentType, visibility } = req.body;
+  if (!channelId || !contentType) return res.status(400).json({ error: 'Malumot yetarli emas' });
+
+  const channel = await Channel.findOne({ channelId: String(channelId) });
+  if (!channel || !channel.verified) return res.status(400).json({ error: 'Kanal tasdiqlanmagan' });
+
+  const { v4: uuidv4 } = require('uuid');
+  const postId = uuidv4();
+  const post = await Post.create({
+    postId, channelId: String(channelId), ownerId: String(ownerId),
+    contentType, fileId, text, title, paymentType, visibility: visibility !== false
+  });
+
+  const buttons = [];
+  if (paymentType !== 'hidden') {
+    const botInfo = await telegram.getBotId().catch(() => null);
+    buttons.push([
+      { text: '🎁 Donat qilish', url: `${MINI_APP_URL}/${channel.slug}?post=${postId}` },
+      { text: '💬 Izohlar', url: `${MINI_APP_URL}/comments.html?post=${postId}` }
+    ]);
+  }
+  const opts = { reply_markup: { inline_keyboard: buttons } };
+
+  try {
+    let sent;
+    if (contentType === 'text') sent = await telegram.sendMessage(channelId, text, opts);
+    else if (contentType === 'photo') sent = await telegram.sendPhoto(channelId, fileId, { caption: text, ...opts });
+    else if (contentType === 'video') sent = await telegram.sendVideo(channelId, fileId, { caption: text, ...opts });
+    else if (contentType === 'document') sent = await telegram.sendDocument(channelId, fileId, { caption: text, ...opts });
+
+    post.messageId = sent.message_id;
+    await post.save();
+    res.json({ ok: true, postId, messageId: sent.message_id });
+  } catch (e) {
+    res.status(400).json({ error: 'Kanalga joylab bolmadi: ' + e.message });
+  }
+});
+
+// ============ HISOBIM ============
+router.get('/account/:ownerId', async (req, res) => {
+  const channels = await Channel.find({ ownerId: req.params.ownerId });
+  const agg = await Donation.aggregate([
+    { $match: { channelId: { $in: channels.map(c => c.channelId) }, status: 'paid' } },
+    { $group: { _id: null, total: { $sum: '$amount' } } }
+  ]);
+  res.json({ channelsCount: channels.length, total: agg[0]?.total || 0 });
+});
+
+// ============ TO'LOVLAR ============
+router.get('/payments/:ownerId', async (req, res) => {
+  const channels = await Channel.find({ ownerId: req.params.ownerId });
+  const donations = await Donation.find({
+    channelId: { $in: channels.map(c => c.channelId) }, status: 'paid'
+  }).sort({ createdAt: -1 }).limit(10);
+  res.json(donations.map(d => ({
+    name: d.anonymous ? 'Anonim' : (d.name || "Noma'lum"),
+    amount: d.amount, comment: d.comment, date: d.createdAt
+  })));
+});
 
 // Post haqida ma'lumot (mini app sarlavhasi uchun)
 router.get('/post/:postId', async (req, res) => {
@@ -19,11 +141,12 @@ router.get('/post/:postId', async (req, res) => {
   });
 });
 
-// Kanal haqida ma'lumot
+// Kanal haqida ma'lumot (slug orqali ham qidiradi)
 router.get('/channel/:channelId', async (req, res) => {
-  const channel = await Channel.findOne({ channelId: req.params.channelId });
+  let channel = await Channel.findOne({ channelId: req.params.channelId });
+  if (!channel) channel = await Channel.findOne({ slug: req.params.channelId });
   if (!channel) return res.status(404).json({ error: 'Kanal topilmadi' });
-  res.json({ title: channel.title, username: channel.username });
+  res.json({ title: channel.title, username: channel.username, channelId: channel.channelId });
 });
 
 // Donat yaratish
