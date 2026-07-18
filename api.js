@@ -2,7 +2,10 @@ const express = require('express');
 const Donation = require('./Donation');
 const Post = require('./Post');
 const Channel = require('./Channel');
+const Withdrawal = require('./Withdrawal');
 const telegram = require('./telegram');
+const THEMES = require('./themes');
+const { getBalance } = require('./balance');
 
 const router = express.Router();
 const { CLICK_MERCHANT_ID, CLICK_SERVICE_ID, PAYME_MERCHANT_ID, MINI_APP_URL } = process.env;
@@ -137,7 +140,8 @@ router.get('/post/:postId', async (req, res) => {
     title: post.title,
     channelId: post.channelId,
     channelTitle: channel?.title || '',
-    paymentType: post.paymentType
+    paymentType: post.paymentType,
+    theme: channel?.theme || 'dark'
   });
 });
 
@@ -146,7 +150,7 @@ router.get('/channel/:channelId', async (req, res) => {
   let channel = await Channel.findOne({ channelId: req.params.channelId });
   if (!channel) channel = await Channel.findOne({ slug: req.params.channelId });
   if (!channel) return res.status(404).json({ error: 'Kanal topilmadi' });
-  res.json({ title: channel.title, username: channel.username, channelId: channel.channelId });
+  res.json({ title: channel.title, username: channel.username, channelId: channel.channelId, theme: channel.theme || 'dark' });
 });
 
 // Donat yaratish
@@ -293,6 +297,47 @@ router.post('/react/:donationId', async (req, res) => {
   await donation.save();
 
   res.json({ reactions: Object.fromEntries(donation.reactions) });
+});
+
+// ============ TEMA DO'KONI ============
+router.get('/theme-shop/:ownerId', async (req, res) => {
+  const channel = await Channel.findOne({ ownerId: req.params.ownerId });
+  const { balance } = await getBalance(req.params.ownerId);
+  res.json({
+    balance,
+    hasChannel: !!channel,
+    currentTheme: channel?.theme || 'dark',
+    themes: Object.entries(THEMES).map(([key, t]) => ({ key, name: t.name, price: t.price }))
+  });
+});
+
+router.post('/theme-buy', async (req, res) => {
+  const { ownerId, theme } = req.body;
+  const themeInfo = THEMES[theme];
+  if (!themeInfo) return res.status(400).json({ error: "Noto'g'ri tema" });
+
+  const channel = await Channel.findOne({ ownerId });
+  if (!channel) return res.status(400).json({ error: 'Avval kanalingizni ulang' });
+
+  if (theme !== channel.theme && themeInfo.price > 0) {
+    const { balance } = await getBalance(ownerId);
+    if (balance < themeInfo.price) {
+      return res.status(400).json({ error: "Balansingizda yetarli mablag' yo'q" });
+    }
+    await Withdrawal.create({
+      withdrawalId: 'theme' + Date.now(),
+      ownerId,
+      amount: themeInfo.price,
+      cardNumber: 'THEME:' + theme,
+      cardHolder: 'Theme Store',
+      bank: 'INTERNAL',
+      status: 'completed'
+    });
+  }
+
+  channel.theme = theme;
+  await channel.save();
+  res.json({ ok: true, theme });
 });
 
 module.exports = router;
