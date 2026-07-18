@@ -10,6 +10,7 @@ const donationSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   method: { type: String, enum: ['click', 'payme'] },
   status: { type: String, enum: ['pending', 'paid'], default: 'pending' },
+  reactions: { type: Map, of: Number, default: {} },
   telegramUserId: String,
   createdAt: { type: Date, default: Date.now }
 });
