@@ -60,4 +60,12 @@ async function getFilePath(fileId) {
   return file.file_path;
 }
 
-module.exports = { getChat, isBotAdmin, sendMessage, sendPhoto, sendVideo, sendDocument, getBotId, getChatPhotoFileId, getFilePath, BOT_TOKEN };
+async function editMessageText(chatId, messageId, text) {
+  return call('editMessageText', { chat_id: chatId, message_id: messageId, text });
+}
+
+async function editMessageCaption(chatId, messageId, caption) {
+  return call('editMessageCaption', { chat_id: chatId, message_id: messageId, caption });
+}
+
+module.exports = { getChat, isBotAdmin, sendMessage, sendPhoto, sendVideo, sendDocument, getBotId, getChatPhotoFileId, getFilePath, editMessageText, editMessageCaption, BOT_TOKEN };
