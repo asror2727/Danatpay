@@ -42,6 +42,17 @@
   .comment { opacity: 0.65; font-size: 14px; margin-bottom: 10px; min-height: 14px; }
   .date { text-align: right; font-size: 12px; opacity: 0.4; }
 
+  .reactions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .reaction-btn {
+    display: flex; align-items: center; gap: 4px;
+    background: var(--tg-theme-bg-color, #f0f0f0);
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 20px; padding: 5px 10px;
+    font-size: 13px; cursor: pointer; color: inherit;
+  }
+  .reaction-btn.reacted { background: #2481cc22; border-color: #2481cc; }
+  .reaction-btn .count { font-size: 11px; font-weight: 700; opacity: 0.7; }
+
   .empty { text-align: center; opacity: 0.5; margin-top: 60px; font-size: 14px; }
 </style>
 </head>
@@ -103,13 +114,49 @@ async function load() {
       return;
     }
 
+    const EMOJIS = ['👍', '❤️', '😂', '🔥', '🗿'];
+    const reacted = JSON.parse(localStorage.getItem('reacted') || '{}');
+
     list.innerHTML = data.comments.map(c => `
       <div class="card">
         <div class="top"><span class="name">${escapeHtml(c.name)}</span> = <span class="amount">${c.amount.toLocaleString()} so'm</span></div>
         <div class="comment">${c.comment ? escapeHtml(c.comment) : ''}</div>
+        <div class="reactions" data-id="${c.donationId}">
+          ${EMOJIS.map(e => {
+            const count = c.reactions?.[e] || 0;
+            const isReacted = reacted[c.donationId] === e;
+            return `<button class="reaction-btn ${isReacted ? 'reacted' : ''}" data-emoji="${e}">${e}${count > 0 ? `<span class="count">${Math.min(count, 100)}</span>` : ''}</button>`;
+          }).join('')}
+        </div>
         <div class="date">${fmtDate(c.date)}</div>
       </div>
     `).join('');
+
+    document.querySelectorAll('.reactions').forEach(container => {
+      const donationId = container.dataset.id;
+      container.querySelectorAll('.reaction-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (reacted[donationId]) return; // bitta reaksiya, qayta bosilmasin
+          const emoji = btn.dataset.emoji;
+          try {
+            const res = await fetch('/api/react/' + donationId, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ emoji })
+            });
+            const result = await res.json();
+            reacted[donationId] = emoji;
+            localStorage.setItem('reacted', JSON.stringify(reacted));
+
+            container.querySelectorAll('.reaction-btn').forEach(b => {
+              const count = result.reactions?.[b.dataset.emoji] || 0;
+              b.innerHTML = `${b.dataset.emoji}${count > 0 ? `<span class="count">${Math.min(count, 100)}</span>` : ''}`;
+              b.classList.toggle('reacted', b.dataset.emoji === emoji);
+            });
+          } catch (e) {}
+        });
+      });
+    });
   } catch (e) {
     list.innerHTML = '<div class="empty">Xatolik yuz berdi</div>';
   }
