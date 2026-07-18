@@ -1,9 +1,25 @@
 const express = require('express');
 const crypto = require('crypto');
 const Donation = require('./Donation');
+const Channel = require('./Channel');
+const telegram = require('./telegram');
 
 const router = express.Router();
 const { CLICK_SERVICE_ID, CLICK_SECRET_KEY, PAYME_KEY } = process.env;
+
+async function notifyOwner(donation) {
+  if (donation.channelId === 'platform-support') return;
+  try {
+    const channel = await Channel.findOne({ channelId: donation.channelId });
+    if (!channel) return;
+    const name = donation.anonymous ? 'Anonim' : (donation.name || "Noma'lum");
+    await telegram.sendMessage(
+      channel.ownerId,
+      `🎉 ${name} ${donation.amount.toLocaleString()} so'm tashladi!` +
+      (donation.comment ? `\n"${donation.comment}"` : '')
+    );
+  } catch (e) {}
+}
 
 // ============ CLICK ============
 router.post('/click/prepare', async (req, res) => {
@@ -34,6 +50,7 @@ router.post('/click/complete', async (req, res) => {
   if (Number(error) === 0 && donation.status !== 'paid') {
     donation.status = 'paid';
     await donation.save();
+    notifyOwner(donation);
   }
   res.json({ merchant_trans_id, error: 0, error_note: 'OK' });
 });
@@ -59,6 +76,7 @@ router.post('/payme', async (req, res) => {
     if (donation && donation.status !== 'paid') {
       donation.status = 'paid';
       await donation.save();
+      notifyOwner(donation);
     }
     return res.json({ result: { transaction: params.id, perform_time: Date.now(), state: 2 }, id });
   }
