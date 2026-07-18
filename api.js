@@ -205,10 +205,12 @@ router.get('/comments/:channelId', async (req, res) => {
   res.json({
     visible: true,
     comments: donations.map(d => ({
+      donationId: d.donationId,
       name: d.anonymous ? 'Anonim' : (d.name || "Noma'lum"),
       amount: d.amount,
       comment: d.comment,
-      date: d.createdAt
+      date: d.createdAt,
+      reactions: Object.fromEntries(d.reactions || new Map())
     }))
   });
 });
@@ -253,6 +255,44 @@ router.get('/donation-status/:donationId', async (req, res) => {
   const donation = await Donation.findOne({ donationId: req.params.donationId });
   if (!donation) return res.status(404).json({ error: 'Topilmadi' });
   res.json({ status: donation.status });
+});
+
+// Top kanallar (reyting) - eng ko'p donat yig'gan kanallar
+router.get('/leaderboard', async (req, res) => {
+  const agg = await Donation.aggregate([
+    { $match: { status: 'paid', channelId: { $ne: 'platform-support' } } },
+    { $group: { _id: '$channelId', total: { $sum: '$amount' } } },
+    { $sort: { total: -1 } },
+    { $limit: 20 }
+  ]);
+
+  const channelIds = agg.map(a => a._id);
+  const channels = await Channel.find({ channelId: { $in: channelIds } });
+  const channelMap = {};
+  channels.forEach(c => { channelMap[c.channelId] = c; });
+
+  res.json(agg.map((a, i) => ({
+    rank: i + 1,
+    channelId: a._id,
+    title: channelMap[a._id]?.title || "Noma'lum",
+    slug: channelMap[a._id]?.slug || null,
+    total: a.total
+  })));
+});
+
+// Izohga reaksiya (like/emoji) qo'yish
+router.post('/react/:donationId', async (req, res) => {
+  const { emoji } = req.body;
+  if (!emoji) return res.status(400).json({ error: 'Emoji kerak' });
+
+  const donation = await Donation.findOne({ donationId: req.params.donationId });
+  if (!donation) return res.status(404).json({ error: 'Topilmadi' });
+
+  const current = donation.reactions.get(emoji) || 0;
+  donation.reactions.set(emoji, current + 1);
+  await donation.save();
+
+  res.json({ reactions: Object.fromEntries(donation.reactions) });
 });
 
 module.exports = router;
