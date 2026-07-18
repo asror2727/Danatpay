@@ -177,10 +177,11 @@ router.post('/donate', async (req, res) => {
   });
 
   let payUrl = '';
+  const returnUrl = `${MINI_APP_URL}/donate.html?donation=${donationId}`;
   if (method === 'click') {
-    payUrl = `https://my.click.uz/services/pay?service_id=${CLICK_SERVICE_ID}&merchant_id=${CLICK_MERCHANT_ID}&amount=${amount}&transaction_param=${donationId}`;
+    payUrl = `https://my.click.uz/services/pay?service_id=${CLICK_SERVICE_ID}&merchant_id=${CLICK_MERCHANT_ID}&amount=${amount}&transaction_param=${donationId}&return_url=${encodeURIComponent(returnUrl)}`;
   } else {
-    const raw = `m=${PAYME_MERCHANT_ID};ac.order_id=${donationId};a=${Number(amount) * 100}`;
+    const raw = `m=${PAYME_MERCHANT_ID};ac.order_id=${donationId};a=${Number(amount) * 100};c=${returnUrl}`;
     payUrl = `https://checkout.paycom.uz/${Buffer.from(raw).toString('base64')}`;
   }
 
@@ -245,6 +246,13 @@ router.get('/platform-total', async (req, res) => {
     { $group: { _id: null, total: { $sum: '$amount' } } }
   ]);
   res.json({ total: agg[0]?.total || 0 });
+});
+
+// To'lov holatini tekshirish (mini app pollingi uchun)
+router.get('/donation-status/:donationId', async (req, res) => {
+  const donation = await Donation.findOne({ donationId: req.params.donationId });
+  if (!donation) return res.status(404).json({ error: 'Topilmadi' });
+  res.json({ status: donation.status });
 });
 
 module.exports = router;
