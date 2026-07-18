@@ -7,6 +7,7 @@ const channelSchema = new mongoose.Schema({
   username: String,
   slug: { type: String, unique: true, sparse: true },
   verified: { type: Boolean, default: false },
+  theme: { type: String, default: 'dark' },
   createdAt: { type: Date, default: Date.now }
 });
 
