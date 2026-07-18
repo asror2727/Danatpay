@@ -23,9 +23,54 @@
     background: var(--bg);
     color: #f1eefc;
     margin: 0;
-    padding: 0 16px 24px;
+    padding: 0 16px 100px;
     min-height: 100vh;
   }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .bottom-nav {
+    position: fixed; left: 12px; right: 12px; bottom: 12px;
+    background: #171330;
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    display: flex;
+    padding: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    z-index: 500;
+  }
+  .nav-btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 8px 2px; border-radius: 16px; cursor: pointer;
+    color: #8b85ad; font-size: 10px; font-weight: 700; background: transparent;
+  }
+  .nav-btn .nav-icon { font-size: 18px; }
+  .nav-btn.active { background: var(--primary); color: #fff; }
+
+  .section-title { font-size: 16px; font-weight: 800; margin: 8px 0 14px; }
+  .lb-row {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 12px; margin-bottom: 8px;
+  }
+  .lb-rank { font-weight: 800; width: 26px; text-align: center; opacity: 0.6; }
+  .lb-rank.gold { color: #fbbf24; opacity: 1; }
+  .lb-avatar {
+    width: 36px; height: 36px; border-radius: 50%; background: var(--card-2);
+    display: flex; align-items: center; justify-content: center; font-weight: 700; overflow: hidden; flex-shrink: 0;
+  }
+  .lb-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .lb-title { flex: 1; font-weight: 600; font-size: 14px; }
+  .lb-total { font-weight: 800; font-size: 13px; color: var(--success); }
+
+  .stat-row {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px; margin-bottom: 8px; font-size: 14px;
+  }
+  .stat-row .val { font-weight: 800; }
+  .empty-tab { text-align: center; opacity: 0.5; margin-top: 40px; font-size: 14px; }
 
   .hero {
     margin: 0 -16px 20px;
@@ -177,6 +222,7 @@
 </head>
 <body>
 
+<div id="tabAsosiy" class="tab-content active">
   <div class="hero">
     <div class="icon" id="channelIcon">D</div>
     <div class="title" id="channelTitle">Yuklanmoqda...</div>
@@ -215,11 +261,34 @@
     <button id="payBtn" disabled>🎁 Donat qilish</button>
     <div id="msg"></div>
   </div>
+</div>
+
+<div id="tabTop" class="tab-content">
+  <div class="section-title">🏆 Top donatlar</div>
+  <div id="topList"><div class="empty-tab">Yuklanmoqda...</div></div>
+</div>
+
+<div id="tabKanalim" class="tab-content">
+  <div class="section-title">📢 Kanalim</div>
+  <div id="kanalimList"><div class="empty-tab">Yuklanmoqda...</div></div>
+</div>
+
+<div id="tabHisobot" class="tab-content">
+  <div class="section-title">📊 Hisobotlar</div>
+  <div id="hisobotList"><div class="empty-tab">Yuklanmoqda...</div></div>
+</div>
 
   <div class="overlay" id="statusOverlay">
     <div class="modal" id="statusModal">
       <!-- JS orqali to'ldiriladi -->
     </div>
+  </div>
+
+  <div class="bottom-nav">
+    <button class="nav-btn active" data-tab="tabAsosiy"><span class="nav-icon">🏠</span>Asosiy</button>
+    <button class="nav-btn" data-tab="tabTop"><span class="nav-icon">🏆</span>Top donatlar</button>
+    <button class="nav-btn" data-tab="tabKanalim"><span class="nav-icon">📢</span>Kanalim</button>
+    <button class="nav-btn" data-tab="tabHisobot"><span class="nav-icon">📊</span>Hisobotlar</button>
   </div>
 
 <script>
@@ -277,6 +346,8 @@ function showModal(html) {
 
 async function checkDonationStatus() {
   document.getElementById('formCard').style.display = 'none';
+  const nav = document.querySelector('.bottom-nav');
+  if (nav) nav.style.display = 'none';
   showModal(`
     <div class="spinner"></div>
     <h2>Tekshirilmoqda...</h2>
@@ -399,6 +470,91 @@ document.getElementById('payBtn').addEventListener('click', async () => {
     msg.textContent = "Xatolik yuz berdi, qayta urinib ko'ring.";
   }
 });
+
+// ============ PASTKI NAVIGATSIYA ============
+const loadedTabs = {};
+
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    document.getElementById(tab).classList.add('active');
+
+    if (!loadedTabs[tab]) {
+      loadedTabs[tab] = true;
+      if (tab === 'tabTop') loadTopDonors();
+      if (tab === 'tabKanalim') loadKanalim();
+      if (tab === 'tabHisobot') loadHisobot();
+    }
+  });
+});
+
+async function loadTopDonors() {
+  const el = document.getElementById('topList');
+  try {
+    const list = await fetch('/api/leaderboard').then(r => r.json());
+    if (!list.length) { el.innerHTML = '<div class="empty-tab">Hozircha maʼlumot yoʻq</div>'; return; }
+    el.innerHTML = list.map(c => `
+      <div class="lb-row">
+        <div class="lb-rank ${c.rank <= 3 ? 'gold' : ''}">#${c.rank}</div>
+        <div class="lb-avatar" data-ch="${c.channelId}">${(c.title || 'K')[0].toUpperCase()}</div>
+        <div class="lb-title">${escapeHtml(c.title)}</div>
+        <div class="lb-total">${c.total.toLocaleString()} so'm</div>
+      </div>
+    `).join('');
+    document.querySelectorAll('.lb-avatar').forEach(av => {
+      const img = new Image();
+      img.onload = () => { av.innerHTML = ''; av.appendChild(img); img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'cover'; };
+      img.src = '/api/channel-photo/' + av.dataset.ch;
+    });
+  } catch (e) {
+    el.innerHTML = '<div class="empty-tab">Xatolik yuz berdi</div>';
+  }
+}
+
+async function loadKanalim() {
+  const el = document.getElementById('kanalimList');
+  const user = tg.initDataUnsafe?.user;
+  if (!user) { el.innerHTML = '<div class="empty-tab">Telegram orqali oching</div>'; return; }
+  try {
+    const channels = await fetch('/api/channel/owner/' + user.id).then(r => r.json());
+    if (!channels.length) { el.innerHTML = '<div class="empty-tab">Sizda ulangan kanal yoʻq.<br>Botga /start yozib "Kanalim" boʻlimidan ulang.</div>'; return; }
+    el.innerHTML = channels.map(c => `
+      <div class="stat-row">
+        <div>${escapeHtml(c.title)} ${c.verified ? '✅' : '⏳'}</div>
+        ${c.link ? `<a href="${c.link}" style="color: var(--accent); font-size: 12px;">Havola</a>` : ''}
+      </div>
+    `).join('');
+  } catch (e) {
+    el.innerHTML = '<div class="empty-tab">Xatolik yuz berdi</div>';
+  }
+}
+
+async function loadHisobot() {
+  const el = document.getElementById('hisobotList');
+  const user = tg.initDataUnsafe?.user;
+  if (!user) { el.innerHTML = '<div class="empty-tab">Telegram orqali oching</div>'; return; }
+  try {
+    const payments = await fetch('/api/payments/' + user.id).then(r => r.json());
+    if (!payments.length) { el.innerHTML = '<div class="empty-tab">Hozircha donat yoʻq</div>'; return; }
+    el.innerHTML = payments.map(p => `
+      <div class="stat-row">
+        <div>${escapeHtml(p.name)}${p.comment ? ' — ' + escapeHtml(p.comment) : ''}</div>
+        <div class="val" style="color: var(--success);">${p.amount.toLocaleString()} so'm</div>
+      </div>
+    `).join('');
+  } catch (e) {
+    el.innerHTML = '<div class="empty-tab">Xatolik yuz berdi</div>';
+  }
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
 </script>
 
 </body>
