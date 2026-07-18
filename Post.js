@@ -10,6 +10,8 @@ const postSchema = new mongoose.Schema({
   title: String,
   paymentType: { type: String, enum: ['post', 'general', 'hidden'], default: 'post' },
   visibility: { type: Boolean, default: true },
+  goalName: String,
+  goalAmount: Number,
   messageId: Number,
   createdAt: { type: Date, default: Date.now }
 });
