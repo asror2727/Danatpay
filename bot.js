@@ -5,6 +5,7 @@ const Post = require('./Post');
 const Donation = require('./Donation');
 const Withdrawal = require('./Withdrawal');
 const { onDonationPaid, buildProgressBlock } = require('./donationEffects');
+const { getBalance } = require('./balance');
 
 const { BOT_TOKEN, MINI_APP_URL, ADMIN_CHAT_ID, SUPPORT_USERNAME } = process.env;
 const bot = new Telegraf(BOT_TOKEN);
@@ -468,24 +469,6 @@ async function publishPost(ctx, data, visibility) {
 }
 
 // ============ HISOBIM ============
-async function getBalance(ownerId) {
-  const channels = await Channel.find({ ownerId });
-  const channelIds = channels.map(c => c.channelId);
-
-  const incomeAgg = await Donation.aggregate([
-    { $match: { channelId: { $in: channelIds }, status: 'paid' } },
-    { $group: { _id: null, total: { $sum: '$amount' } } }
-  ]);
-  const expenseAgg = await Withdrawal.aggregate([
-    { $match: { ownerId, status: { $in: ['pending', 'completed'] } } },
-    { $group: { _id: null, total: { $sum: '$amount' } } }
-  ]);
-
-  const income = incomeAgg[0]?.total || 0;
-  const expense = expenseAgg[0]?.total || 0;
-  return { income, expense, balance: income - expense };
-}
-
 bot.hears('👤 Hisobim', async (ctx) => {
   const { income, expense, balance } = await getBalance(String(ctx.from.id));
   ctx.reply(
@@ -587,7 +570,7 @@ bot.command('testdonat', async (ctx) => {
 });
 
 // ============ HAQIQIY PULNI QO'LDA KIRITISH (faqat admin, o'zi tashlab bergan pul) ============
-bot.command('realdonat', async (ctx) => {
+bot.command('danate', async (ctx) => {
   if (!ADMIN_CHAT_ID || String(ctx.from.id) !== String(ADMIN_CHAT_ID)) {
     return ctx.reply("Bu buyruq faqat admin uchun.");
   }
@@ -595,12 +578,12 @@ bot.command('realdonat', async (ctx) => {
   const parts = ctx.message.text.trim().split(/\s+/).slice(1);
   if (parts.length < 2) {
     return ctx.reply(
-      "Foydalanish:\n/realdonat <kanal_slug_yoki_id> <summa> [post_id] [ism]\n\n" +
-      "Masalan:\n/realdonat zenix 20000\n/realdonat zenix 20000 - Azamat"
+      "Foydalanish:\n/danate <kanal_slug> <summa> [izoh]\n\n" +
+      "Masalan:\n/danate xavixuz 5000 omad okam🌝"
     );
   }
 
-  const [slugOrId, amountStr, postIdArg, ...nameParts] = parts;
+  const [slugOrId, amountStr, ...commentParts] = parts;
   const amount = Number(amountStr.replace(/\D/g, ''));
   if (!amount || amount < 1) return ctx.reply("Summani to'g'ri kiriting.");
 
@@ -611,10 +594,10 @@ bot.command('realdonat', async (ctx) => {
   const donation = await Donation.create({
     donationId,
     channelId: channel.channelId,
-    postId: (postIdArg && postIdArg !== '-') ? postIdArg : null,
-    name: nameParts.join(' ') || 'Homiy',
+    postId: null,
+    name: 'Homiy',
     anonymous: false,
-    comment: '',
+    comment: commentParts.join(' '),
     amount,
     method: 'click',
     status: 'paid',
