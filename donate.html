@@ -7,50 +7,54 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   :root {
-    --primary: #ff6b6b;
-    --primary-dark: #ee5253;
-    --accent: #feca57;
-    --success: #1dd1a1;
-    --bg-grad-1: #ff9a8b;
-    --bg-grad-2: #ff6a88;
-    --bg-grad-3: #ff99ac;
+    --primary: #8b5cf6;
+    --primary-dark: #7c3aed;
+    --accent: #38bdf8;
+    --success: #22c55e;
+    --danger: #ef4444;
+    --bg: #0f0c1d;
+    --card: #1a1630;
+    --card-2: #211c3d;
+    --border: #322b52;
   }
   * { box-sizing: border-box; }
   body {
     font-family: -apple-system, system-ui, sans-serif;
-    background: var(--tg-theme-bg-color, #fff5f2);
-    color: var(--tg-theme-text-color, #1a1a1a);
+    background: var(--bg);
+    color: #f1eefc;
     margin: 0;
     padding: 0 16px 24px;
+    min-height: 100vh;
   }
 
   .hero {
     margin: 0 -16px 20px;
     padding: 28px 16px 40px;
-    background: linear-gradient(135deg, var(--bg-grad-1), var(--bg-grad-2) 60%, var(--bg-grad-3));
+    background: radial-gradient(circle at 30% 20%, #4c1d95, #0f0c1d 70%),
+                linear-gradient(135deg, #3b0764, #1e1b4b 50%, #0f0c1d);
     border-radius: 0 0 28px 28px;
     text-align: center;
-    color: #fff;
     position: relative;
   }
   .hero .icon {
     width: 68px; height: 68px; border-radius: 50%;
-    background: rgba(255,255,255,0.25);
-    border: 3px solid #fff;
+    background: rgba(139,92,246,0.25);
+    border: 3px solid var(--primary);
     display: flex; align-items: center; justify-content: center;
     font-size: 28px; font-weight: 800; overflow: hidden;
     margin: 0 auto 12px;
   }
   .hero .icon img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
   .hero .title { font-size: 18px; font-weight: 800; margin-bottom: 2px; }
-  .hero .sub { font-size: 13px; opacity: 0.9; }
+  .hero .sub { font-size: 13px; opacity: 0.7; }
 
   .card {
-    background: var(--tg-theme-secondary-bg-color, #fff);
+    background: var(--card);
+    border: 1px solid var(--border);
     border-radius: 20px;
     padding: 18px;
     margin-top: -24px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
     position: relative;
     z-index: 2;
   }
@@ -64,9 +68,9 @@
   .quick-amounts button {
     padding: 10px 4px;
     border-radius: 12px;
-    border: 2px solid #f0e6e4;
-    background: transparent;
-    color: inherit;
+    border: 2px solid var(--border);
+    background: var(--card-2);
+    color: #f1eefc;
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
@@ -82,19 +86,20 @@
     width: 100%;
     padding: 13px 14px;
     border-radius: 14px;
-    border: 2px solid #f0e6e4;
+    border: 2px solid var(--border);
     font-size: 15px;
-    background: transparent;
-    color: inherit;
+    background: var(--card-2);
+    color: #f1eefc;
     font-family: inherit;
   }
+  input::placeholder, textarea::placeholder { color: #8b85ad; }
   input:focus, textarea:focus { outline: none; border-color: var(--primary); }
   textarea { resize: none; min-height: 80px; }
   .counter { text-align: right; font-size: 11px; opacity: 0.5; margin: -6px 0 10px; }
 
   .toggle {
     width: 42px; height: 24px; border-radius: 20px;
-    background: #e5d9d6; position: relative; cursor: pointer; flex-shrink: 0;
+    background: var(--border); position: relative; cursor: pointer; flex-shrink: 0;
     transition: background 0.2s;
   }
   .toggle.on { background: var(--primary); }
@@ -108,38 +113,39 @@
 
   .methods { display: flex; gap: 8px; margin: 12px 0; }
   .method-btn {
-    flex: 1; padding: 11px; border-radius: 12px; border: 2px solid #f0e6e4;
-    background: transparent; color: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+    flex: 1; padding: 11px; border-radius: 12px; border: 2px solid var(--border);
+    background: var(--card-2); color: #f1eefc; font-size: 14px; font-weight: 700; cursor: pointer;
   }
   .method-btn.active {
-    border-color: var(--primary);
-    background: var(--primary);
-    color: #fff;
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #06222f;
   }
 
-  .terms { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; margin: 12px 0; opacity: 0.8; }
-  .terms a { color: var(--primary-dark); font-weight: 600; }
+  .terms { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; margin: 12px 0; opacity: 0.7; }
+  .terms a { color: var(--accent); font-weight: 600; }
 
   #payBtn {
     width: 100%; padding: 16px; border: none; border-radius: 14px;
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    background: linear-gradient(135deg, var(--primary), var(--accent));
     color: #fff; font-size: 16px; font-weight: 800; cursor: pointer;
-    box-shadow: 0 6px 16px rgba(238,82,83,0.35);
+    box-shadow: 0 6px 18px rgba(139,92,246,0.4);
     transition: transform 0.1s;
   }
   #payBtn:active { transform: scale(0.98); }
   #payBtn:disabled { opacity: 0.4; box-shadow: none; }
 
-  #msg { text-align: center; color: #e74c3c; font-size: 13px; margin-top: 10px; min-height: 18px; }
+  #msg { text-align: center; color: var(--danger); font-size: 13px; margin-top: 10px; min-height: 18px; }
 
-  /* Thank you modal */
+  /* Status overlay (checking / success / failure) */
   .overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
     display: none; align-items: center; justify-content: center; z-index: 999;
   }
   .overlay.show { display: flex; }
   .modal {
-    background: var(--tg-theme-bg-color, #fff);
+    background: var(--card);
+    border: 1px solid var(--border);
     border-radius: 24px;
     padding: 30px 24px;
     text-align: center;
@@ -156,8 +162,17 @@
   .modal p { font-size: 14px; opacity: 0.7; margin: 0 0 20px; line-height: 1.5; }
   .modal button {
     width: 100%; padding: 14px; border: none; border-radius: 14px;
-    background: var(--success); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer;
+    color: #fff; font-size: 15px; font-weight: 700; cursor: pointer;
   }
+  .modal .btn-success { background: var(--success); }
+  .modal .btn-danger { background: var(--danger); }
+
+  .spinner {
+    width: 48px; height: 48px; border-radius: 50%;
+    border: 4px solid var(--border); border-top-color: var(--primary);
+    margin: 0 auto 16px; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -168,7 +183,7 @@
     <div class="sub" id="postTitle"></div>
   </div>
 
-  <div class="card">
+  <div class="card" id="formCard">
     <div class="quick-amounts" id="quickAmounts">
       <button data-val="5000">5 000</button>
       <button data-val="10000">10 000</button>
@@ -201,12 +216,9 @@
     <div id="msg"></div>
   </div>
 
-  <div class="overlay" id="thanksOverlay">
-    <div class="modal">
-      <div class="emoji">🎉</div>
-      <h2>Rahmat!</h2>
-      <p>Donatingiz uchun rahmat. To'lov sahifasida to'lovni yakunlang — kanal egasi tez orada xabardor bo'ladi.</p>
-      <button id="closeModal">Yopish</button>
+  <div class="overlay" id="statusOverlay">
+    <div class="modal" id="statusModal">
+      <!-- JS orqali to'ldiriladi -->
     </div>
   </div>
 
@@ -218,6 +230,7 @@ tg.expand();
 const params = new URLSearchParams(window.location.search);
 const postId = params.get('post');
 const channelIdParam = params.get('ch');
+const donationIdParam = params.get('donation');
 
 let channelId = channelIdParam || null;
 let selectedMethod = null;
@@ -255,7 +268,59 @@ async function loadContext() {
     document.getElementById('channelTitle').textContent = 'Xatolik: kanal topilmadi';
   }
 }
-loadContext();
+
+// ============ AGAR TO'LOVDAN QAYTIB KELINGAN BO'LSA ============
+function showModal(html) {
+  document.getElementById('statusModal').innerHTML = html;
+  document.getElementById('statusOverlay').classList.add('show');
+}
+
+async function checkDonationStatus() {
+  document.getElementById('formCard').style.display = 'none';
+  showModal(`
+    <div class="spinner"></div>
+    <h2>Tekshirilmoqda...</h2>
+    <p>To'lovingiz tasdiqlanishini kutyapmiz, biroz kuting.</p>
+  `);
+
+  let attempts = 0;
+  const maxAttempts = 15;
+
+  const interval = setInterval(async () => {
+    attempts++;
+    try {
+      const res = await fetch('/api/donation-status/' + donationIdParam);
+      const data = await res.json();
+
+      if (data.status === 'paid') {
+        clearInterval(interval);
+        showModal(`
+          <div class="emoji">🎉</div>
+          <h2>Rahmat!</h2>
+          <p>Donatingiz uchun rahmat! To'lovingiz muvaffaqiyatli qabul qilindi.</p>
+          <button class="btn-success" onclick="window.Telegram.WebApp.close()">Yopish</button>
+        `);
+        return;
+      }
+    } catch (e) {}
+
+    if (attempts >= maxAttempts) {
+      clearInterval(interval);
+      showModal(`
+        <div class="emoji">😕</div>
+        <h2>To'lov aniqlanmadi</h2>
+        <p>To'lovni amalga oshirib bo'lmadi. Qayta urinib ko'ring yoki internet aloqangizni tekshiring.</p>
+        <button class="btn-danger" onclick="location.href = location.pathname">Qayta urinish</button>
+      `);
+    }
+  }, 2000);
+}
+
+if (donationIdParam) {
+  checkDonationStatus();
+} else {
+  loadContext();
+}
 
 document.querySelectorAll('#quickAmounts button').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -329,16 +394,10 @@ document.getElementById('payBtn').addEventListener('click', async () => {
 
     if (data.error) { msg.textContent = data.error; return; }
 
-    document.getElementById('thanksOverlay').classList.add('show');
     tg.openLink(data.payUrl);
   } catch (err) {
     msg.textContent = "Xatolik yuz berdi, qayta urinib ko'ring.";
   }
-});
-
-document.getElementById('closeModal').addEventListener('click', () => {
-  document.getElementById('thanksOverlay').classList.remove('show');
-  tg.close();
 });
 </script>
 
