@@ -4,6 +4,7 @@ const Channel = require('./Channel');
 const Post = require('./Post');
 const Donation = require('./Donation');
 const Withdrawal = require('./Withdrawal');
+const { onDonationPaid, buildProgressBlock } = require('./donationEffects');
 
 const { BOT_TOKEN, MINI_APP_URL, ADMIN_CHAT_ID, SUPPORT_USERNAME } = process.env;
 const bot = new Telegraf(BOT_TOKEN);
@@ -252,16 +253,32 @@ bot.on('text', async (ctx, next) => {
 
   if (state.step === 'awaiting_post_title') {
     const draft = { ...state.data, title: ctx.message.text };
-    userState[ctx.from.id] = { step: 'awaiting_payment_type', data: draft };
+    userState[ctx.from.id] = { step: 'awaiting_goal_choice', data: draft };
     return ctx.reply(
-      "Ushbu postdan kanalingizga tushadigan to'lovlar turini tanlang:",
+      "Ushbu post uchun maqsad (masalan yangi mikrofon, noutbuk uchun) belgilamoqchimisiz? Belgilansa, kanalda progress-bar avtomatik yangilanib turadi.",
       Markup.inlineKeyboard([
-        [Markup.button.callback('Shu post uchun', 'ptype_post')],
-        [Markup.button.callback("Umumiy to'lovlar", 'ptype_general')],
-        [Markup.button.callback("Ko'rsatilmasin", 'ptype_hidden')],
-        [Markup.button.callback('Bekor qilish', 'ptype_cancel')]
+        [Markup.button.callback('Ha, maqsad qo\'yaman', 'goal_yes')],
+        [Markup.button.callback("Yo'q, kerak emas", 'goal_no')]
       ])
     );
+  }
+
+  if (state.step === 'awaiting_goal_name') {
+    userState[ctx.from.id] = {
+      step: 'awaiting_goal_amount',
+      data: { ...state.data, goalName: ctx.message.text.trim() }
+    };
+    return ctx.reply("Maqsad summasini kiriting (masalan: 100000):");
+  }
+
+  if (state.step === 'awaiting_goal_amount') {
+    const goalAmount = Number(ctx.message.text.replace(/\D/g, ''));
+    if (!goalAmount || goalAmount < 1) {
+      return ctx.reply("Summani to'g'ri kiriting (faqat raqam):");
+    }
+    const draft = { ...state.data, goalAmount };
+    userState[ctx.from.id] = { step: 'awaiting_payment_type', data: draft };
+    return askPaymentType(ctx);
   }
 
   if (state.step === 'awaiting_withdraw_amount') {
@@ -346,6 +363,32 @@ bot.on('text', async (ctx, next) => {
   return next();
 });
 
+bot.action('goal_yes', (ctx) => {
+  const state = userState[ctx.from.id];
+  state.step = 'awaiting_goal_name';
+  ctx.answerCbQuery();
+  ctx.reply("Maqsad nomini yozing (masalan: Yangi mikrofon):");
+});
+
+bot.action('goal_no', (ctx) => {
+  const state = userState[ctx.from.id];
+  state.step = 'awaiting_payment_type';
+  ctx.answerCbQuery();
+  askPaymentType(ctx);
+});
+
+function askPaymentType(ctx) {
+  ctx.reply(
+    "Ushbu postdan kanalingizga tushadigan to'lovlar turini tanlang:",
+    Markup.inlineKeyboard([
+      [Markup.button.callback('Shu post uchun', 'ptype_post')],
+      [Markup.button.callback("Umumiy to'lovlar", 'ptype_general')],
+      [Markup.button.callback("Ko'rsatilmasin", 'ptype_hidden')],
+      [Markup.button.callback('Bekor qilish', 'ptype_cancel')]
+    ])
+  );
+}
+
 bot.action('ptype_post', (ctx) => setPaymentType(ctx, 'post'));
 bot.action('ptype_general', (ctx) => setPaymentType(ctx, 'general'));
 bot.action('ptype_hidden', (ctx) => setPaymentType(ctx, 'hidden'));
@@ -392,8 +435,12 @@ async function publishPost(ctx, data, visibility) {
     text: data.text,
     title: data.title,
     paymentType: data.paymentType,
-    visibility
+    visibility,
+    goalName: data.goalName || null,
+    goalAmount: data.goalAmount || null
   });
+
+  const bodyText = (data.goalAmount ? buildProgressBlock(data.goalName, 0, data.goalAmount) : '') + (data.text || '');
 
   const buttons = [];
   if (data.paymentType !== 'hidden') {
@@ -406,10 +453,10 @@ async function publishPost(ctx, data, visibility) {
   try {
     const opts = { reply_markup: { inline_keyboard: buttons } };
     let sent;
-    if (data.contentType === 'text') sent = await ctx.telegram.sendMessage(data.channelId, data.text, opts);
-    else if (data.contentType === 'photo') sent = await ctx.telegram.sendPhoto(data.channelId, data.fileId, { caption: data.text, ...opts });
-    else if (data.contentType === 'video') sent = await ctx.telegram.sendVideo(data.channelId, data.fileId, { caption: data.text, ...opts });
-    else if (data.contentType === 'document') sent = await ctx.telegram.sendDocument(data.channelId, data.fileId, { caption: data.text, ...opts });
+    if (data.contentType === 'text') sent = await ctx.telegram.sendMessage(data.channelId, bodyText, opts);
+    else if (data.contentType === 'photo') sent = await ctx.telegram.sendPhoto(data.channelId, data.fileId, { caption: bodyText, ...opts });
+    else if (data.contentType === 'video') sent = await ctx.telegram.sendVideo(data.channelId, data.fileId, { caption: bodyText, ...opts });
+    else if (data.contentType === 'document') sent = await ctx.telegram.sendDocument(data.channelId, data.fileId, { caption: bodyText, ...opts });
 
     post.messageId = sent.message_id;
     await post.save();
@@ -497,6 +544,46 @@ bot.command('qollab', async (ctx) => {
       Markup.button.webApp('💝 Donat qilish', `${MINI_APP_URL}/support.html`)
     ])
   );
+});
+
+// ============ TEST DONAT (faqat admin uchun, haqiqiy pulsiz) ============
+bot.command('testdonat', async (ctx) => {
+  if (!ADMIN_CHAT_ID || String(ctx.from.id) !== String(ADMIN_CHAT_ID)) {
+    return ctx.reply("Bu buyruq faqat admin uchun.");
+  }
+
+  const parts = ctx.message.text.trim().split(/\s+/).slice(1);
+  if (parts.length < 2) {
+    return ctx.reply(
+      "Foydalanish:\n/testdonat <kanal_slug_yoki_id> <summa> [post_id]\n\n" +
+      "Masalan:\n/testdonat zenix 15000\n\n" +
+      "Agar progress-bar'ni sinamoqchi bo'lsangiz, post_id'ni ham qo'shing (post_id'ni kanaldagi postning donat/izohlar tugmasidagi havoladan olishingiz mumkin)."
+    );
+  }
+
+  const [slugOrId, amountStr, postIdArg] = parts;
+  const amount = Number(amountStr.replace(/\D/g, ''));
+  if (!amount || amount < 1) return ctx.reply("Summani to'g'ri kiriting.");
+
+  const channel = await Channel.findOne({ slug: slugOrId }) || await Channel.findOne({ channelId: slugOrId });
+  if (!channel) return ctx.reply("Kanal topilmadi. Slug yoki kanal ID'ni tekshiring.");
+
+  const donationId = 'test' + Date.now();
+  const donation = await Donation.create({
+    donationId,
+    channelId: channel.channelId,
+    postId: postIdArg || null,
+    name: 'Test foydalanuvchi',
+    anonymous: false,
+    comment: 'Bu soxta test donat (haqiqiy pul emas)',
+    amount,
+    method: 'click',
+    status: 'paid',
+    telegramUserId: String(ctx.from.id)
+  });
+
+  await onDonationPaid(donation);
+  ctx.reply(`✅ Test donat yaratildi: ${amount.toLocaleString()} so'm → ${channel.title}\n\nBu haqiqiy pul emas, faqat sinov uchun.`);
 });
 
 // ============ XIZMAT SHARTLARI ============
