@@ -586,6 +586,45 @@ bot.command('testdonat', async (ctx) => {
   ctx.reply(`✅ Test donat yaratildi: ${amount.toLocaleString()} so'm → ${channel.title}\n\nBu haqiqiy pul emas, faqat sinov uchun.`);
 });
 
+// ============ HAQIQIY PULNI QO'LDA KIRITISH (faqat admin, o'zi tashlab bergan pul) ============
+bot.command('realdonat', async (ctx) => {
+  if (!ADMIN_CHAT_ID || String(ctx.from.id) !== String(ADMIN_CHAT_ID)) {
+    return ctx.reply("Bu buyruq faqat admin uchun.");
+  }
+
+  const parts = ctx.message.text.trim().split(/\s+/).slice(1);
+  if (parts.length < 2) {
+    return ctx.reply(
+      "Foydalanish:\n/realdonat <kanal_slug_yoki_id> <summa> [post_id] [ism]\n\n" +
+      "Masalan:\n/realdonat zenix 20000\n/realdonat zenix 20000 - Azamat"
+    );
+  }
+
+  const [slugOrId, amountStr, postIdArg, ...nameParts] = parts;
+  const amount = Number(amountStr.replace(/\D/g, ''));
+  if (!amount || amount < 1) return ctx.reply("Summani to'g'ri kiriting.");
+
+  const channel = await Channel.findOne({ slug: slugOrId }) || await Channel.findOne({ channelId: slugOrId });
+  if (!channel) return ctx.reply("Kanal topilmadi. Slug yoki kanal ID'ni tekshiring.");
+
+  const donationId = 'real' + Date.now();
+  const donation = await Donation.create({
+    donationId,
+    channelId: channel.channelId,
+    postId: (postIdArg && postIdArg !== '-') ? postIdArg : null,
+    name: nameParts.join(' ') || 'Homiy',
+    anonymous: false,
+    comment: '',
+    amount,
+    method: 'click',
+    status: 'paid',
+    telegramUserId: String(ctx.from.id)
+  });
+
+  await onDonationPaid(donation);
+  ctx.reply(`✅ ${amount.toLocaleString()} so'm → ${channel.title} hisobiga qo'shildi.`);
+});
+
 // ============ XIZMAT SHARTLARI ============
 bot.hears("📄 Xizmat shartlari", (ctx) => {
   ctx.reply('Xizmat shartlari va qoidalari: ' + (MINI_APP_URL || '') + '/terms.html');
