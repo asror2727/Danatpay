@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel - Danatpay</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, system-ui, sans-serif;
+    background: linear-gradient(135deg, #0f0c1d, #1a0f30);
+    color: #f1eefc;
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+  }
+  
+  .container { max-width: 600px; margin: 0 auto; }
+  .header { text-align: center; margin-bottom: 30px; }
+  .header h1 { font-size: 26px; margin: 0; }
+  .header p { opacity: 0.6; margin: 4px 0 0; }
+  
+  .card {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(139,92,246,0.3);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 13px; opacity: 0.7; margin-bottom: 6px; }
+  .form-group input, .form-group textarea {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(139,92,246,0.3);
+    background: rgba(255,255,255,0.05);
+    color: #f1eefc;
+    font-family: inherit;
+    font-size: 14px;
+  }
+  .form-group textarea { min-height: 80px; resize: none; }
+  
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary { background: linear-gradient(135deg, #8b5cf6, #38bdf8); color: #fff; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-danger { background: #ef4444; color: #fff; }
+  
+  .msg { text-align: center; margin-top: 12px; font-size: 13px; min-height: 18px; }
+  .msg.ok { color: #22c55e; }
+  .msg.err { color: #ef4444; }
+  
+  .info-box {
+    background: rgba(59,183,255,0.1);
+    border-left: 3px solid #38bdf8;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+  
+  .logout { margin-top: 20px; text-align: center; }
+  .logout a { color: #38bdf8; text-decoration: none; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>🎵 Admin Panel</h1>
+    <p>Danatpay sozlamalari</p>
+  </div>
+
+  <div id="loginCard" class="card">
+    <div class="form-group">
+      <label>Admin Paroli</label>
+      <input type="password" id="password" placeholder="Parol kiriting">
+    </div>
+    <button class="btn btn-primary" onclick="login()">Kirish</button>
+    <div class="msg" id="loginMsg"></div>
+  </div>
+
+  <div id="adminPanel" style="display: none;">
+    <div class="info-box">
+      ✅ Siz login qildingiz. Sozlamalarni o'zgartirishingiz mumkin.
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top: 0;">🎵 Fon Musiqa</h3>
+      <div class="form-group">
+        <label>Musiqa URL (MP3 havola)</label>
+        <textarea id="musicUrl" placeholder="https://example.com/music.mp3"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="saveMusicUrl()">Saqlash</button>
+      <div class="msg" id="musicMsg"></div>
+    </div>
+
+    <div class="logout">
+      <a href="#" onclick="logout(); return false;">Chiqish</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const PASSWORD = 'admin0022';
+const MUSIC_KEY = 'danatpay_music_url';
+
+function login() {
+  const pwd = document.getElementById('password').value.trim();
+  if (pwd !== PASSWORD) {
+    document.getElementById('loginMsg').textContent = '❌ Parol noto\'g\'ri';
+    document.getElementById('loginMsg').className = 'msg err';
+    return;
+  }
+  document.getElementById('loginCard').style.display = 'none';
+  document.getElementById('adminPanel').style.display = 'block';
+  loadMusicUrl();
+}
+
+function loadMusicUrl() {
+  const saved = localStorage.getItem(MUSIC_KEY);
+  if (saved) {
+    document.getElementById('musicUrl').value = saved;
+  }
+}
+
+function saveMusicUrl() {
+  const url = document.getElementById('musicUrl').value.trim();
+  if (!url) {
+    showMsg('musicMsg', '❌ URL bo\'sh bo\'lmasligi kerak', 'err');
+    return;
+  }
+  localStorage.setItem(MUSIC_KEY, url);
+  showMsg('musicMsg', '✅ Musiqa saqlandi', 'ok');
+  
+  // Donate sahifasini yangilash uchun signal yuborish
+  window.musicUrlUpdated = true;
+}
+
+function showMsg(id, text, cls) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'msg ' + cls;
+  setTimeout(() => { el.textContent = ''; el.className = 'msg'; }, 3000);
+}
+
+function logout() {
+  document.getElementById('adminPanel').style.display = 'none';
+  document.getElementById('loginCard').style.display = 'block';
+  document.getElementById('password').value = '';
+}
+</script>
+
+</body>
+</html>
