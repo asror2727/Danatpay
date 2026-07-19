@@ -547,6 +547,54 @@ bot.command('theme', async (ctx) => {
   ctx.reply(`✅ Tema o'zgartirildi: ${themes[themeKey]}\n\nDonat sahifasini yangilash uchun yana oching.`);
 });
 
+// ============ SIRLI SOVGA (MYSTERY DONATE) ============
+bot.command('sovga', async (ctx) => {
+  if (!ADMIN_CHAT_ID || String(ctx.from.id) !== String(ADMIN_CHAT_ID)) {
+    return ctx.reply("Bu buyruq faqat admin uchun.");
+  }
+
+  const parts = ctx.message.text.trim().split(/\s+/).slice(1);
+  if (parts.length < 2) {
+    return ctx.reply(
+      "Foydalanish:\n/sovga <kanal_slug> <summa> [izoh]\n\n" +
+      "Masalan:\n/sovga xavixuz 15000\n/sovga xavixuz 15000 Omad okam"
+    );
+  }
+
+  const [slugOrId, amountStr, ...commentParts] = parts;
+  const amount = Number(amountStr.replace(/\D/g, ''));
+  if (!amount || amount < 1) return ctx.reply("Summani to'g'ri kiriting.");
+
+  const channel = await Channel.findOne({ slug: slugOrId }) || await Channel.findOne({ channelId: slugOrId });
+  if (!channel) return ctx.reply("Kanal topilmadi.");
+
+  const donationId = 'mystery' + Date.now();
+  const donation = await Donation.create({
+    donationId,
+    channelId: channel.channelId,
+    postId: null,
+    name: "Noma'lum",
+    anonymous: true,
+    mystery: true,
+    comment: commentParts.join(' ') || "❤️",
+    amount,
+    method: 'click',
+    status: 'paid',
+    telegramUserId: String(ctx.from.id)
+  });
+
+  await onDonationPaid(donation);
+  
+  try {
+    await telegram.sendMessage(
+      channel.channelId,
+      `🎁 Noma'lum muxlis sovg'a yubordi ❤️\n${amount.toLocaleString()} so'm`
+    );
+  } catch (e) {}
+
+  ctx.reply(`✅ Sirli sovga yuborildi: ${amount.toLocaleString()} so'm → ${channel.title}`);
+});
+
 // ============ TEST DONAT (faqat admin uchun, haqiqiy pulsiz) ============
 bot.command('testdonat', async (ctx) => {
   if (!ADMIN_CHAT_ID || String(ctx.from.id) !== String(ADMIN_CHAT_ID)) {
@@ -624,6 +672,19 @@ bot.command('danate', async (ctx) => {
 
   await onDonationPaid(donation);
   ctx.reply(`✅ ${amount.toLocaleString()} so'm → ${channel.title} hisobiga qo'shildi.`);
+});
+
+// ============ ADMIN PANEL ============
+bot.command("admin0022", async (ctx) => {
+  if (!ADMIN_CHAT_ID || String(ctx.from.id) !== String(ADMIN_CHAT_ID)) {
+    return ctx.reply("❌ Sizda ruxsat yoq.");
+  }
+  ctx.reply(
+    "🔐 Admin Panel:\n\nShu yerda musiqa va boshqa sozlamalarni ozgartirishingiz mumkin.\n\n⚠️ Parol: admin0022",
+    Markup.inlineKeyboard([
+      Markup.button.webApp("🔧 Admin Panelni Ochish", `${MINI_APP_URL}/admin.html`)
+    ])
+  );
 });
 
 // ============ XIZMAT SHARTLARI ============
