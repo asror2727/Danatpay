@@ -1,6 +1,6 @@
-const Channel = require('./Channel');
-const Donation = require('./Donation');
-const Withdrawal = require('./Withdrawal');
+const Channel = require('./models/Channel');
+const Donation = require('./models/Donation');
+const Withdrawal = require('./models/Withdrawal');
 
 async function getBalance(ownerId) {
   const channels = await Channel.find({ ownerId });
