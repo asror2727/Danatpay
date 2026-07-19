@@ -244,6 +244,16 @@ router.get('/channel-photo/:channelId', async (req, res) => {
   }
 });
 
+// ============ USER PROFIL ============
+router.get('/user-profile/:userId', async (req, res) => {
+  const donations = await Donation.find({
+    telegramUserId: req.params.userId,
+    status: 'paid'
+  });
+  const total = donations.reduce((sum, d) => sum + d.amount, 0);
+  res.json({ totalDonated: total, donationCount: donations.length });
+});
+
 // Foydalanuvchi qabul qilgan donatlar (hisobotlar uchun)
 router.get('/received/:ownerId', async (req, res) => {
   const channels = await Channel.find({ ownerId: req.params.ownerId });
