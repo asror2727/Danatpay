@@ -6,6 +6,7 @@ const donationSchema = new mongoose.Schema({
   postId: { type: String, default: null },
   name: String,
   anonymous: { type: Boolean, default: false },
+  mystery: { type: Boolean, default: false },
   comment: String,
   amount: { type: Number, required: true },
   method: { type: String, enum: ['click', 'payme'] },
