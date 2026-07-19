@@ -290,10 +290,19 @@ bot.on('text', async (ctx, next) => {
     if (amount > state.data.balance) {
       return ctx.reply("Hisobingizda yetarli mablag' yo'q. Qaytadan kiriting:");
     }
-    userState[ctx.from.id] = { step: 'awaiting_withdraw_card', data: { ...state.data, amount } };
+    userState[ctx.from.id] = { step: 'awaiting_card_type', data: { ...state.data, amount } };
     return ctx.reply(
-      "Pul yechish miqdori qabul qilindi ✅\n\nMablag' qabul qilish uchun Uzcard yoki Humo karta raqamingizni yozing (16 ta raqam):"
+      "Qaysi karta turidan foydalanmoqchisiz?",
+      Markup.inlineKeyboard([
+        [Markup.button.callback('💳 Uzcard', 'cardtype_uzcard')],
+        [Markup.button.callback('🏦 Humo', 'cardtype_humo')]
+      ])
     );
+  }
+
+  if (state.step === 'awaiting_card_type') {
+    // Bu step faqat tugma orqali qo'llanadi
+    return;
   }
 
   if (state.step === 'awaiting_withdraw_card') {
@@ -344,7 +353,7 @@ bot.on('text', async (ctx, next) => {
       amount: state.data.amount,
       cardNumber: state.data.cardNumber,
       cardHolder: state.data.cardHolder,
-      bank: state.data.bank,
+      bank: state.data.cardType || state.data.bank,
       status: 'pending'
     });
     userState[ctx.from.id] = { step: 'idle' };
@@ -480,6 +489,22 @@ bot.hears('👤 Hisobim', async (ctx) => {
       [Markup.button.callback("⚡ Tez yechib olish", 'withdraw_fast')]
     ])
   );
+});
+
+bot.action("cardtype_uzcard", (ctx) => {
+  const state = userState[ctx.from.id];
+  state.step = "awaiting_withdraw_card";
+  state.data.cardType = "Uzcard";
+  ctx.answerCbQuery();
+  ctx.reply("Karta raqamingizni yozing (16 ta raqam):");
+});
+
+bot.action("cardtype_humo", (ctx) => {
+  const state = userState[ctx.from.id];
+  state.step = "awaiting_withdraw_card";
+  state.data.cardType = "Humo";
+  ctx.answerCbQuery();
+  ctx.reply("Karta raqamingizni yozing (16 ta raqam):");
 });
 
 bot.action('withdraw_fast', (ctx) => {
