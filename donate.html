@@ -316,6 +316,7 @@
   <button class="nav-btn" data-tab="tabTop"><span class="nav-icon">🏆</span>Top</button>
   <button class="nav-btn" data-tab="tabTema"><span class="nav-icon">🎨</span>Tema</button>
   <button class="nav-btn" data-tab="tabHisobot"><span class="nav-icon">📊</span>Hisobot</button>
+  <button class="nav-btn" data-tab="tabAdmin" style="display:none;" id="adminNavBtn"><span class="nav-icon">⚙️</span>Admin</button>
 </div>
 
 <script>
@@ -465,6 +466,23 @@ const audio = document.getElementById('bgMusic');
 const musicBtn = document.getElementById('musicBtn');
 let musicPlaying = false;
 
+// Admin panel'dan musiqa URL'ni yuklash
+function updateMusicUrl() {
+  const savedUrl = localStorage.getItem('danatpay_music_url');
+  if (savedUrl) {
+    audio.src = savedUrl;
+  }
+}
+updateMusicUrl();
+
+// Musiqa URL'si o'zgarganda qayta yuklash
+setInterval(() => {
+  const savedUrl = localStorage.getItem('danatpay_music_url');
+  if (savedUrl && audio.src !== savedUrl) {
+    audio.src = savedUrl;
+  }
+}, 2000);
+
 audio.volume = 0.3;
 
 musicBtn.addEventListener('click', () => {
@@ -608,18 +626,23 @@ async function loadThemeShop() {
       <div style="text-align:center; margin-bottom: 14px; opacity: 0.7; font-size: 13px;">
         Balansingiz: <b style="color: var(--success);">${shop.balance.toLocaleString()} so'm</b>
       </div>
-    ` + shop.themes.map(t => `
-      <div class="theme-card">
-        <div class="theme-preview" style="background: ${THEME_PRESETS[t.key]?.hero || '#333'};"></div>
-        <div class="theme-info">
-          <div class="theme-name">${t.name}</div>
-          <div class="theme-price">${t.price > 0 ? t.price.toLocaleString() + " so'm" : 'Bepul'}</div>
+    ` + shop.themes.map(t => {
+      const icons = { dark: '🌙', neon: '⚡', glass: '❄️', gold: '👑', anime: '✨' };
+      return `
+        <div class="theme-card">
+          <div class="theme-preview" style="background: ${THEME_PRESETS[t.key]?.hero || '#333'}; font-size: 24px; padding: 20px;">
+            ${icons[t.key] || '🎨'}
+          </div>
+          <div class="theme-info">
+            <div class="theme-name">${t.name}</div>
+            <div class="theme-price">${t.price > 0 ? t.price.toLocaleString() + " so'm" : 'Bepul'}</div>
+          </div>
+          <button class="theme-btn ${t.key === shop.currentTheme ? 'active' : 'buy'}" data-key="${t.key}" data-price="${t.price}">
+            ${t.key === shop.currentTheme ? '✅ Faol' : "Sotib ol"}
+          </button>
         </div>
-        <button class="theme-btn ${t.key === shop.currentTheme ? 'active' : 'buy'}" data-key="${t.key}" data-price="${t.price}">
-          ${t.key === shop.currentTheme ? '✅' : "Tanlash"}
-        </button>
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
     el.querySelectorAll('.theme-btn.buy').forEach(btn => {
       btn.addEventListener('click', async () => {
