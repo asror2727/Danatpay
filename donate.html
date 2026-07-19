@@ -30,66 +30,6 @@
   .tab-content { display: none; }
   .tab-content.active { display: block; }
 
-  .bottom-nav {
-    position: fixed; left: 12px; right: 12px; bottom: 12px;
-    background: #171330;
-    border: 1px solid var(--border);
-    border-radius: 22px;
-    display: flex;
-    padding: 8px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-    z-index: 500;
-  }
-  .nav-btn {
-    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
-    padding: 8px 2px; border-radius: 16px; cursor: pointer;
-    color: #8b85ad; font-size: 10px; font-weight: 700; background: transparent;
-  }
-  .nav-btn .nav-icon { font-size: 18px; }
-  .nav-btn.active { background: var(--primary); color: #fff; }
-
-  .section-title { font-size: 16px; font-weight: 800; margin: 8px 0 14px; }
-  .lb-row {
-    display: flex; align-items: center; gap: 10px;
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 14px; padding: 12px; margin-bottom: 8px;
-  }
-  .lb-rank { font-weight: 800; width: 26px; text-align: center; opacity: 0.6; }
-  .lb-rank.gold { color: #fbbf24; opacity: 1; }
-  .lb-avatar {
-    width: 36px; height: 36px; border-radius: 50%; background: var(--card-2);
-    display: flex; align-items: center; justify-content: center; font-weight: 700; overflow: hidden; flex-shrink: 0;
-  }
-  .lb-avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .lb-title { flex: 1; font-weight: 600; font-size: 14px; }
-  .lb-total { font-weight: 800; font-size: 13px; color: var(--success); }
-
-  .stat-row {
-    display: flex; justify-content: space-between; align-items: center;
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 14px; padding: 14px; margin-bottom: 8px; font-size: 14px;
-  }
-  .stat-row .val { font-weight: 800; }
-  .empty-tab { text-align: center; opacity: 0.5; margin-top: 40px; font-size: 14px; }
-
-  .theme-card {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 16px; padding: 14px; margin-bottom: 10px;
-    display: flex; align-items: center; gap: 12px;
-  }
-  .theme-preview {
-    width: 52px; height: 52px; border-radius: 12px; flex-shrink: 0;
-  }
-  .theme-info { flex: 1; }
-  .theme-name { font-weight: 700; font-size: 14px; }
-  .theme-price { font-size: 12px; opacity: 0.6; }
-  .theme-btn {
-    padding: 8px 14px; border-radius: 10px; border: none;
-    font-size: 12px; font-weight: 700; cursor: pointer;
-  }
-  .theme-btn.buy { background: var(--primary); color: #fff; }
-  .theme-btn.active { background: var(--success); color: #fff; }
-
   .hero {
     margin: 0 -16px 20px;
     padding: 28px 16px 40px;
@@ -200,7 +140,6 @@
 
   #msg { text-align: center; color: var(--danger); font-size: 13px; margin-top: 10px; min-height: 18px; }
 
-  /* Status overlay (checking / success / failure) */
   .overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,0.7);
     display: none; align-items: center; justify-content: center; z-index: 999;
@@ -236,6 +175,72 @@
     margin: 0 auto 16px; animation: spin 0.8s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  .section-title { font-size: 16px; font-weight: 800; margin: 8px 0 14px; }
+  .lb-row {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 12px; margin-bottom: 8px;
+  }
+  .lb-rank { font-weight: 800; width: 26px; text-align: center; opacity: 0.6; }
+  .lb-rank.gold { color: #fbbf24; opacity: 1; }
+  .lb-avatar {
+    width: 36px; height: 36px; border-radius: 50%; background: var(--card-2);
+    display: flex; align-items: center; justify-content: center; font-weight: 700; overflow: hidden; flex-shrink: 0;
+  }
+  .lb-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .lb-title { flex: 1; font-weight: 600; font-size: 14px; }
+  .lb-total { font-weight: 800; font-size: 13px; color: var(--success); }
+
+  .stat-row {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px; margin-bottom: 8px; font-size: 14px;
+  }
+  .stat-row .val { font-weight: 800; }
+  .empty-tab { text-align: center; opacity: 0.5; margin-top: 40px; font-size: 14px; }
+
+  .theme-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 14px; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .theme-preview {
+    width: 52px; height: 52px; border-radius: 12px; flex-shrink: 0;
+  }
+  .theme-info { flex: 1; }
+  .theme-name { font-weight: 700; font-size: 14px; }
+  .theme-price { font-size: 12px; opacity: 0.6; }
+  .theme-btn {
+    padding: 8px 14px; border-radius: 10px; border: none;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+  }
+  .theme-btn.buy { background: var(--primary); color: #fff; }
+  .theme-btn.active { background: var(--success); color: #fff; }
+
+  .bottom-nav {
+    position: fixed; left: 12px; right: 12px; bottom: 12px;
+    background: #171330;
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    display: flex;
+    padding: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    z-index: 500;
+  }
+  .nav-btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 8px 2px; border-radius: 16px; cursor: pointer;
+    color: #8b85ad; font-size: 10px; font-weight: 700; background: transparent; border: none;
+  }
+  .nav-btn .nav-icon { font-size: 18px; }
+  .nav-btn.active { background: var(--primary); color: #fff; }
+
+  #musicBtn {
+    position: fixed; bottom: 90px; right: 16px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; z-index: 400; font-size: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
 </style>
 </head>
 <body>
@@ -273,7 +278,7 @@
 
     <div class="terms">
       <input type="checkbox" id="termsCheck" style="margin-top:2px;">
-      <label for="termsCheck"><a href="/terms.html" target="_blank">Xizmat shartlari va qoidalari</a>ga rozi bo'ldim</label>
+      <label for="termsCheck"><a href="/terms.html" target="_blank">Xizmat shartlari</a>ga rozi</label>
     </div>
 
     <button id="payBtn" disabled>🎁 Donat qilish</button>
@@ -296,18 +301,22 @@
   <div id="hisobotList"><div class="empty-tab">Yuklanmoqda...</div></div>
 </div>
 
-  <div class="overlay" id="statusOverlay">
-    <div class="modal" id="statusModal">
-      <!-- JS orqali to'ldiriladi -->
-    </div>
-  </div>
+<div class="overlay" id="statusOverlay">
+  <div class="modal" id="statusModal"></div>
+</div>
 
-  <div class="bottom-nav">
-    <button class="nav-btn active" data-tab="tabAsosiy"><span class="nav-icon">🏠</span>Asosiy</button>
-    <button class="nav-btn" data-tab="tabTop"><span class="nav-icon">🏆</span>Top donatlar</button>
-    <button class="nav-btn" data-tab="tabTema"><span class="nav-icon">🎨</span>Tema</button>
-    <button class="nav-btn" data-tab="tabHisobot"><span class="nav-icon">📊</span>Hisobotlar</button>
-  </div>
+<audio id="bgMusic" loop style="display:none;">
+  <source src="https://api.telegram.org/file/bot6924194033:AAH7b5xgx-tQ3kWrW4_7N_gQj5Z0XpqKvVQ/documents/file_2_5404634713249845130.mp3" type="audio/mpeg">
+</audio>
+
+<button id="musicBtn">🔊</button>
+
+<div class="bottom-nav">
+  <button class="nav-btn active" data-tab="tabAsosiy"><span class="nav-icon">🏠</span>Asosiy</button>
+  <button class="nav-btn" data-tab="tabTop"><span class="nav-icon">🏆</span>Top</button>
+  <button class="nav-btn" data-tab="tabTema"><span class="nav-icon">🎨</span>Tema</button>
+  <button class="nav-btn" data-tab="tabHisobot"><span class="nav-icon">📊</span>Hisobot</button>
+</div>
 
 <script>
 const tg = window.Telegram.WebApp;
@@ -323,7 +332,6 @@ let channelId = channelIdParam || null;
 let selectedMethod = null;
 let anonymous = false;
 
-// ============ TEMALAR ============
 const THEME_PRESETS = {
   dark: {
     primary: '#8b5cf6', primaryDark: '#7c3aed', accent: '#38bdf8', bg: '#0f0c1d',
@@ -363,7 +371,8 @@ function applyTheme(key) {
   root.setProperty('--card-2', t.card2);
   root.setProperty('--border', t.border);
   document.body.style.background = t.bg;
-  document.querySelector('.hero').style.background = t.hero;
+  const hero = document.querySelector('.hero');
+  if (hero) hero.style.background = t.hero;
 }
 
 function setChannelIcon(channelId, title) {
@@ -401,7 +410,6 @@ async function loadContext() {
   }
 }
 
-// ============ AGAR TO'LOVDAN QAYTIB KELINGAN BO'LSA ============
 function showModal(html) {
   document.getElementById('statusModal').innerHTML = html;
   document.getElementById('statusOverlay').classList.add('show');
@@ -414,37 +422,33 @@ async function checkDonationStatus() {
   showModal(`
     <div class="spinner"></div>
     <h2>Tekshirilmoqda...</h2>
-    <p>To'lovingiz tasdiqlanishini kutyapmiz, biroz kuting.</p>
+    <p>To'lovingiz tasdiqlanishini kutyapmiz.</p>
   `);
 
   let attempts = 0;
-  const maxAttempts = 15;
-
   const interval = setInterval(async () => {
     attempts++;
     try {
       const res = await fetch('/api/donation-status/' + donationIdParam);
       const data = await res.json();
-
       if (data.status === 'paid') {
         clearInterval(interval);
         showModal(`
           <div class="emoji">🎉</div>
           <h2>Rahmat!</h2>
-          <p>Donatingiz uchun rahmat! To'lovingiz muvaffaqiyatli qabul qilindi.</p>
+          <p>Donatingiz uchun rahmat!</p>
           <button class="btn-success" onclick="window.Telegram.WebApp.close()">Yopish</button>
         `);
         return;
       }
     } catch (e) {}
-
-    if (attempts >= maxAttempts) {
+    if (attempts >= 15) {
       clearInterval(interval);
       showModal(`
         <div class="emoji">😕</div>
         <h2>To'lov aniqlanmadi</h2>
-        <p>To'lovni amalga oshirib bo'lmadi. Qayta urinib ko'ring yoki internet aloqangizni tekshiring.</p>
-        <button class="btn-danger" onclick="location.href = location.pathname">Qayta urinish</button>
+        <p>Qayta urinib ko'ring yoki internet tekshiring.</p>
+        <button class="btn-danger" onclick="location.href = location.pathname">Qayta</button>
       `);
     }
   }, 2000);
@@ -456,6 +460,34 @@ if (donationIdParam) {
   loadContext();
 }
 
+// ============ MUSIQA ============
+const audio = document.getElementById('bgMusic');
+const musicBtn = document.getElementById('musicBtn');
+let musicPlaying = false;
+
+audio.volume = 0.3;
+
+musicBtn.addEventListener('click', () => {
+  if (musicPlaying) {
+    audio.pause();
+    musicBtn.textContent = '🔇';
+    musicPlaying = false;
+  } else {
+    audio.play().catch(() => {});
+    musicBtn.textContent = '🔊';
+    musicPlaying = true;
+  }
+});
+
+document.addEventListener('touchstart', () => {
+  if (!musicPlaying) {
+    audio.play().catch(() => {});
+    musicBtn.textContent = '🔊';
+    musicPlaying = true;
+  }
+}, { once: true });
+
+// ============ FORM HANDLERS ============
 document.querySelectorAll('#quickAmounts button').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('#quickAmounts button').forEach(b => b.classList.remove('active'));
@@ -525,16 +557,14 @@ document.getElementById('payBtn').addEventListener('click', async () => {
       })
     });
     const data = await res.json();
-
     if (data.error) { msg.textContent = data.error; return; }
-
     tg.openLink(data.payUrl);
   } catch (err) {
-    msg.textContent = "Xatolik yuz berdi, qayta urinib ko'ring.";
+    msg.textContent = "Xatolik yuz berdi.";
   }
 });
 
-// ============ PASTKI NAVIGATSIYA ============
+// ============ TABS ============
 const loadedTabs = {};
 
 document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -558,7 +588,7 @@ async function loadTopDonors() {
   const el = document.getElementById('topList');
   try {
     const list = await fetch('/api/leaderboard').then(r => r.json());
-    if (!list.length) { el.innerHTML = '<div class="empty-tab">Hozircha maʼlumot yoʻq</div>'; return; }
+    if (!list.length) { el.innerHTML = '<div class="empty-tab">Maʼlumot yoʻq</div>'; return; }
     el.innerHTML = list.map(c => `
       <div class="lb-row">
         <div class="lb-rank ${c.rank <= 3 ? 'gold' : ''}">#${c.rank}</div>
@@ -567,14 +597,7 @@ async function loadTopDonors() {
         <div class="lb-total">${c.total.toLocaleString()} so'm</div>
       </div>
     `).join('');
-    document.querySelectorAll('.lb-avatar').forEach(av => {
-      const img = new Image();
-      img.onload = () => { av.innerHTML = ''; av.appendChild(img); img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'cover'; };
-      img.src = '/api/channel-photo/' + av.dataset.ch;
-    });
-  } catch (e) {
-    el.innerHTML = '<div class="empty-tab">Xatolik yuz berdi</div>';
-  }
+  } catch (e) { el.innerHTML = '<div class="empty-tab">Xatolik</div>'; }
 }
 
 async function loadThemeShop() {
@@ -585,7 +608,7 @@ async function loadThemeShop() {
   try {
     const shop = await fetch('/api/theme-shop/' + user.id).then(r => r.json());
     if (!shop.hasChannel) {
-      el.innerHTML = '<div class="empty-tab">Avval botda "Kanalim" boʻlimidan kanalingizni ulang.</div>';
+      el.innerHTML = '<div class="empty-tab">Botda kanalingizni ulang.</div>';
       return;
     }
 
@@ -601,7 +624,7 @@ async function loadThemeShop() {
           <div class="theme-price">${t.price > 0 ? t.price.toLocaleString() + " so'm" : 'Bepul'}</div>
         </div>
         <button class="theme-btn ${t.key === shop.currentTheme ? 'active' : 'buy'}" data-key="${t.key}" data-price="${t.price}">
-          ${t.key === shop.currentTheme ? '✅ Faol' : "Tanlash"}
+          ${t.key === shop.currentTheme ? '✅' : "Tanlash"}
         </button>
       </div>
     `).join('');
@@ -610,10 +633,9 @@ async function loadThemeShop() {
       btn.addEventListener('click', async () => {
         const key = btn.dataset.key;
         const price = Number(btn.dataset.price);
-        if (price > 0 && !confirm(`${price.toLocaleString()} so'm evaziga shu temani sotib olasizmi?`)) return;
+        if (price > 0 && !confirm(`${price.toLocaleString()} so'm?`)) return;
 
         btn.disabled = true;
-        btn.textContent = '...';
         try {
           const res = await fetch('/api/theme-buy', {
             method: 'POST',
@@ -621,18 +643,13 @@ async function loadThemeShop() {
             body: JSON.stringify({ ownerId: user.id, theme: key })
           });
           const data = await res.json();
-          if (data.error) { alert(data.error); btn.disabled = false; btn.textContent = 'Tanlash'; return; }
+          if (data.error) { alert(data.error); btn.disabled = false; return; }
           loadedTabs['tabTema'] = false;
           loadThemeShop();
-        } catch (e) {
-          alert("Xatolik yuz berdi");
-          btn.disabled = false;
-        }
+        } catch (e) { alert("Xatolik"); btn.disabled = false; }
       });
     });
-  } catch (e) {
-    el.innerHTML = '<div class="empty-tab">Xatolik yuz berdi</div>';
-  }
+  } catch (e) { el.innerHTML = '<div class="empty-tab">Xatolik</div>'; }
 }
 
 async function loadHisobot() {
@@ -641,16 +658,14 @@ async function loadHisobot() {
   if (!user) { el.innerHTML = '<div class="empty-tab">Telegram orqali oching</div>'; return; }
   try {
     const payments = await fetch('/api/payments/' + user.id).then(r => r.json());
-    if (!payments.length) { el.innerHTML = '<div class="empty-tab">Hozircha donat yoʻq</div>'; return; }
+    if (!payments.length) { el.innerHTML = '<div class="empty-tab">Donatingiz yoʻq</div>'; return; }
     el.innerHTML = payments.map(p => `
       <div class="stat-row">
         <div>${escapeHtml(p.name)}${p.comment ? ' — ' + escapeHtml(p.comment) : ''}</div>
         <div class="val" style="color: var(--success);">${p.amount.toLocaleString()} so'm</div>
       </div>
     `).join('');
-  } catch (e) {
-    el.innerHTML = '<div class="empty-tab">Xatolik yuz berdi</div>';
-  }
+  } catch (e) { el.innerHTML = '<div class="empty-tab">Xatolik</div>'; }
 }
 
 function escapeHtml(str) {
