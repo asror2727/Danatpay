@@ -241,6 +241,21 @@
     border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
     cursor: pointer; z-index: 400; font-size: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   }
+
+  .profile-header {
+    text-align: center; background: linear-gradient(135deg, var(--primary), var(--accent));
+    border-radius: 16px; padding: 20px; margin-bottom: 16px; color: #fff;
+  }
+  .profile-avatar { width: 80px; height: 80px; border-radius: 50%; background: #fff; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 40px; overflow: hidden; }
+  .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .profile-name { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+  .profile-badge { display: inline-block; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 11px; margin: 4px 2px; }
+  .profile-level { font-size: 13px; opacity: 0.9; margin: 6px 0 0; }
+
+  .profile-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
+  .stat-val { font-size: 18px; font-weight: 800; color: var(--primary); }
+  .stat-label { font-size: 11px; opacity: 0.6; margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -296,9 +311,9 @@
   <div id="temaList"><div class="empty-tab">Yuklanmoqda...</div></div>
 </div>
 
-<div id="tabHisobot" class="tab-content">
-  <div class="section-title">📊 Hisobotlar</div>
-  <div id="hisobotList"><div class="empty-tab">Yuklanmoqda...</div></div>
+<div id="tabProfil" class="tab-content">
+  <div class="section-title">👤 Profilim</div>
+  <div id="profilInfo"><div class="empty-tab">Yuklanmoqda...</div></div>
 </div>
 
 <div class="overlay" id="statusOverlay">
@@ -306,7 +321,7 @@
 </div>
 
 <audio id="bgMusic" loop style="display:none;">
-  <source src="https://api.telegram.org/file/bot6924194033:AAH7b5xgx-tQ3kWrW4_7N_gQj5Z0XpqKvVQ/documents/file_2_5404634713249845130.mp3" type="audio/mpeg">
+  <source src="https://api.telegram.org/file/bot8840892305:AAExPeCpVhH5a4i46kPF9jPjIJvFZxxUGXc/music/file_1.mp3" type="audio/mpeg">
 </audio>
 
 <button id="musicBtn">🔊</button>
@@ -315,7 +330,7 @@
   <button class="nav-btn active" data-tab="tabAsosiy"><span class="nav-icon">🏠</span>Asosiy</button>
   <button class="nav-btn" data-tab="tabTop"><span class="nav-icon">🏆</span>Top</button>
   <button class="nav-btn" data-tab="tabTema"><span class="nav-icon">🎨</span>Tema</button>
-  <button class="nav-btn" data-tab="tabHisobot"><span class="nav-icon">📊</span>Hisobot</button>
+  <button class="nav-btn" data-tab="tabProfil"><span class="nav-icon">👤</span>Profil</button>
   <button class="nav-btn" data-tab="tabAdmin" style="display:none;" id="adminNavBtn"><span class="nav-icon">⚙️</span>Admin</button>
 </div>
 
@@ -589,7 +604,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
       loadedTabs[tab] = true;
       if (tab === 'tabTop') loadTopDonors();
       if (tab === 'tabTema') loadThemeShop();
-      if (tab === 'tabHisobot') loadHisobot();
+      if (tab === 'tabProfil') loadProfile();
     }
   });
 });
@@ -667,27 +682,52 @@ async function loadThemeShop() {
   } catch (e) { el.innerHTML = '<div class="empty-tab">Xatolik</div>'; }
 }
 
-async function loadHisobot() {
-  const el = document.getElementById('hisobotList');
+async function loadProfile() {
+  const el = document.getElementById('profilInfo');
   const user = tg.initDataUnsafe?.user;
   if (!user) { el.innerHTML = '<div class="empty-tab">Telegram orqali oching</div>'; return; }
+
   try {
+    const userData = await fetch('/api/user-profile/' + user.id).then(r => r.json());
     const donations = await fetch('/api/received/' + user.id).then(r => r.json());
-    if (!donations.length) { el.innerHTML = '<div class="empty-tab">Hozircha donat yoʻq</div>'; return; }
-    
-    let total = 0;
-    donations.forEach(d => { total += d.amount; });
-    
+
+    // Badge va level hisoblash
+    const totalDonated = donations.reduce((sum, d) => sum + d.amount, 0);
+    let level = 1, badge = '🌱';
+    if (totalDonated > 5000000) { level = 5; badge = '👑'; }
+    else if (totalDonated > 2000000) { level = 4; badge = '⭐'; }
+    else if (totalDonated > 500000) { level = 3; badge = '🔥'; }
+    else if (totalDonated > 100000) { level = 2; badge = '💎'; }
+
+    const userPhoto = user.photo_url ? `<img src="${user.photo_url}">` : (user.first_name || 'U')[0];
+
     el.innerHTML = `
-      <div style="text-align:center; margin-bottom: 14px; opacity: 0.7; font-size: 13px;">
-        Jami qabul: <b style="color: var(--success);">${total.toLocaleString()} so'm</b>
+      <div class="profile-header">
+        <div class="profile-avatar">${userPhoto}</div>
+        <div class="profile-name">${escapeHtml(user.first_name || 'Foydalanuvchi')}</div>
+        <div class="profile-badge">${badge} Level ${level}</div>
+        <div class="profile-level">@${user.username || 'no_username'}</div>
       </div>
-    ` + donations.map(p => `
-      <div class="stat-row">
-        <div>${escapeHtml(p.name)}${p.comment ? '<br><small style="opacity:0.6;">' + escapeHtml(p.comment) + '</small>' : ''}</div>
-        <div class="val" style="color: var(--success);">${p.amount.toLocaleString()} so'm</div>
+
+      <div class="profile-stats">
+        <div class="stat-card">
+          <div class="stat-val">${donations.length}</div>
+          <div class="stat-label">Donat qilgan</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">${totalDonated.toLocaleString()}</div>
+          <div class="stat-label">so'm</div>
+        </div>
       </div>
-    `).join('');
+
+      <div class="section-title">📋 Donatlash Tarixi</div>
+      ${donations.length ? donations.map(d => `
+        <div class="stat-row">
+          <div>${escapeHtml(d.name)}<br><small style="opacity:0.5;">${new Date(d.date).toLocaleDateString('uz')}</small></div>
+          <div class="val" style="color: var(--success);">${d.amount.toLocaleString()}</div>
+        </div>
+      `).join('') : '<div class="empty-tab">Hozircha donating yoʻq</div>'}
+    `;
   } catch (e) { el.innerHTML = '<div class="empty-tab">Xatolik</div>'; }
 }
 
