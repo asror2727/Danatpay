@@ -244,6 +244,24 @@ router.get('/channel-photo/:channelId', async (req, res) => {
   }
 });
 
+// Foydalanuvchi qabul qilgan donatlar (hisobotlar uchun)
+router.get('/received/:ownerId', async (req, res) => {
+  const channels = await Channel.find({ ownerId: req.params.ownerId });
+  const channelIds = channels.map(c => c.channelId);
+
+  const donations = await Donation.find({
+    channelId: { $in: channelIds },
+    status: 'paid'
+  }).sort({ createdAt: -1 }).limit(50);
+
+  res.json(donations.map(d => ({
+    name: d.anonymous ? 'Anonim' : (d.name || "Noma'lum"),
+    amount: d.amount,
+    comment: d.comment,
+    date: d.createdAt
+  })));
+});
+
 // Platformani (butun tizimni) qo'llab-quvvatlash uchun umumiy yig'ilgan summa
 const PLATFORM_CHANNEL_ID = 'platform-support';
 router.get('/platform-total', async (req, res) => {
