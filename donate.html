@@ -479,14 +479,6 @@ musicBtn.addEventListener('click', () => {
   }
 });
 
-document.addEventListener('touchstart', () => {
-  if (!musicPlaying) {
-    audio.play().catch(() => {});
-    musicBtn.textContent = '🔊';
-    musicPlaying = true;
-  }
-}, { once: true });
-
 // ============ FORM HANDLERS ============
 document.querySelectorAll('#quickAmounts button').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -657,11 +649,19 @@ async function loadHisobot() {
   const user = tg.initDataUnsafe?.user;
   if (!user) { el.innerHTML = '<div class="empty-tab">Telegram orqali oching</div>'; return; }
   try {
-    const payments = await fetch('/api/payments/' + user.id).then(r => r.json());
-    if (!payments.length) { el.innerHTML = '<div class="empty-tab">Donatingiz yoʻq</div>'; return; }
-    el.innerHTML = payments.map(p => `
+    const donations = await fetch('/api/received/' + user.id).then(r => r.json());
+    if (!donations.length) { el.innerHTML = '<div class="empty-tab">Hozircha donat yoʻq</div>'; return; }
+    
+    let total = 0;
+    donations.forEach(d => { total += d.amount; });
+    
+    el.innerHTML = `
+      <div style="text-align:center; margin-bottom: 14px; opacity: 0.7; font-size: 13px;">
+        Jami qabul: <b style="color: var(--success);">${total.toLocaleString()} so'm</b>
+      </div>
+    ` + donations.map(p => `
       <div class="stat-row">
-        <div>${escapeHtml(p.name)}${p.comment ? ' — ' + escapeHtml(p.comment) : ''}</div>
+        <div>${escapeHtml(p.name)}${p.comment ? '<br><small style="opacity:0.6;">' + escapeHtml(p.comment) + '</small>' : ''}</div>
         <div class="val" style="color: var(--success);">${p.amount.toLocaleString()} so'm</div>
       </div>
     `).join('');
