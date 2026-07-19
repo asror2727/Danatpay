@@ -529,6 +529,24 @@ bot.command('qollab', async (ctx) => {
   );
 });
 
+// ============ TEMA O'ZGARTIRISH ============
+bot.command('theme', async (ctx) => {
+  const channel = await Channel.findOne({ ownerId: String(ctx.from.id) });
+  if (!channel) return ctx.reply("Avval kanalingizni ulang.");
+
+  const themeName = ctx.message.text.trim().split(/\s+/).slice(1).join(' ').toLowerCase();
+  const themes = { dark: 'Dark', neon: 'Neon', glass: 'Glass', gold: 'Gold', anime: 'Anime' };
+  const themeKey = Object.keys(themes).find(k => k.startsWith(themeName.slice(0, 3))) || themeName;
+
+  if (!themes[themeKey]) {
+    return ctx.reply("Temalar: " + Object.keys(themes).join(", "));
+  }
+
+  channel.theme = themeKey;
+  await channel.save();
+  ctx.reply(`✅ Tema o'zgartirildi: ${themes[themeKey]}\n\nDonat sahifasini yangilash uchun yana oching.`);
+});
+
 // ============ TEST DONAT (faqat admin uchun, haqiqiy pulsiz) ============
 bot.command('testdonat', async (ctx) => {
   if (!ADMIN_CHAT_ID || String(ctx.from.id) !== String(ADMIN_CHAT_ID)) {
